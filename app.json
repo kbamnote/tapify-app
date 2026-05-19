@@ -3,6 +3,7 @@
     "name": "tapif-app",
     "slug": "tapif-app",
     "version": "1.0.0",
+    "scheme": "tapifapp",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

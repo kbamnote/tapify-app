@@ -1,0 +1,15 @@
+export const COLORS = {
+  background: '#f6eee6',
+  primary: '#153e3f',
+  primaryLight: '#264d4e',
+  accent: '#d19a66',
+  surface: '#ffffff',
+  text: '#1a2035',
+  textMuted: '#6b7280',
+  border: '#e5e7eb',
+  success: '#25d366',
+  error: '#ef4444',
+  glass: 'rgba(255, 255, 255, 0.82)',
+  glassDark: 'rgba(21, 62, 63, 0.05)',
+  shadow: 'rgba(21, 62, 63, 0.08)',
+};

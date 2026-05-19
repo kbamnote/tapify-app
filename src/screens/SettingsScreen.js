@@ -470,7 +470,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.text,
     lineHeight: 18,
-    whiteSpace: 'pre-wrap', // React Native doesn't use whiteSpace, but we write it formatted
   },
   modalCloseBtn: {
     backgroundColor: COLORS.primary,

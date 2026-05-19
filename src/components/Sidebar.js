@@ -11,13 +11,10 @@ import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 
 const NAV_ITEMS = [
-  { id: 'dashboard',        label: 'Dashboard',        icon: '📊' },
-  { id: 'appointments',     label: 'Appointments',     icon: '📅' },
   { id: 'inquiries',        label: 'Inquiries',        icon: '💬' },
-  { id: 'vcards-edit',      label: 'vCard Edit',       icon: '📇' },
   { id: 'whatsapp-stores',  label: 'WhatsApp Stores',  icon: '🏪' },
   { id: 'whatsapp-orders',  label: 'WhatsApp Orders',  icon: '🛍️' },
-  { id: 'profile',          label: 'Profile',          icon: '👤' },
+  { id: 'my-designs',       label: 'My Designs',       icon: '🎨' },
   { id: 'settings',         label: 'Settings',         icon: '⚙️' },
 ];
 

@@ -1,46 +1,92 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Alert } from 'react-native';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
-
-const INITIAL_INQUIRIES = [
-  { id: 1, name: 'David Miller', email: 'david@millerco.com', phone: '+91 98765 43210', message: 'Hello, I would like to order 50 premium custom wood NFC cards for my sales team. Can you send a catalog?', status: 'New' },
-  { id: 2, name: 'Sarah Connor', email: 'sarah@resistance.org', phone: '+1 555 0199', message: 'Hi there, is it possible to integrate my custom CRM webhook with your digital card system?', status: 'Replied' },
-];
+import { fetchApi } from '../config';
 
 export default function InquiriesScreen() {
-  const [inquiries, setInquiries] = useState(INITIAL_INQUIRIES);
+  const [inquiries, setInquiries] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleReply = (email) => {
+  useEffect(() => {
+    loadInquiries();
+  }, []);
+
+  const loadInquiries = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchApi('/api/inquiries/list.php');
+      if (response.success && response.data?.inquiries) {
+        setInquiries(response.data.inquiries);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load inquiries');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await fetchApi('/api/inquiries/mark-read.php', {
+        method: 'POST',
+        body: JSON.stringify({ id })
+      });
+      setInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, is_read: true } : inq));
+    } catch (error) {
+      console.log('Failed to mark read', error);
+    }
+  };
+
+  const handleReply = (id, email) => {
+    markAsRead(id);
     Linking.openURL(`mailto:${email}?subject=Regarding your Tapify Inquiry`);
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>Inbox / Inquiries</Text>
 
-      {inquiries.map((inq) => (
-        <GlassCard key={inq.id} style={styles.card}>
-          <View style={styles.header}>
-            <Text style={styles.senderName}>{inq.name}</Text>
-            <View style={[styles.badge, inq.status === 'New' ? styles.badgeNew : styles.badgeReplied]}>
-              <Text style={[styles.badgeText, inq.status === 'New' ? styles.textNew : styles.textReplied]}>
-                {inq.status}
-              </Text>
-            </View>
-          </View>
+      {inquiries.length === 0 ? (
+        <Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textMuted }}>No inquiries found.</Text>
+      ) : (
+        inquiries.map((inq) => {
+          const status = !inq.is_read ? 'New' : 'Read';
+          return (
+            <GlassCard key={inq.id} style={styles.card}>
+              <View style={styles.header}>
+                <View>
+                  <Text style={styles.senderName}>{inq.name}</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{inq.time_ago}</Text>
+                </View>
+                <View style={[styles.badge, status === 'New' ? styles.badgeNew : styles.badgeReplied]}>
+                  <Text style={[styles.badgeText, status === 'New' ? styles.textNew : styles.textReplied]}>
+                    {status}
+                  </Text>
+                </View>
+              </View>
 
-          <Text style={styles.contactInfo}>📧 {inq.email}  |  📞 {inq.phone}</Text>
-          
-          <View style={styles.messageBox}>
-            <Text style={styles.messageText}>"{inq.message}"</Text>
-          </View>
+              <Text style={styles.contactInfo}>📧 {inq.email}  |  📞 {inq.phone}</Text>
+              
+              <View style={styles.messageBox}>
+                <Text style={styles.messageText}>"{inq.message}"</Text>
+              </View>
 
-          <TouchableOpacity style={styles.replyBtn} onPress={() => handleReply(inq.email)}>
-            <Text style={styles.replyBtnText}>Reply via Email</Text>
-          </TouchableOpacity>
-        </GlassCard>
-      ))}
+              <TouchableOpacity style={styles.replyBtn} onPress={() => handleReply(inq.id, inq.email)}>
+                <Text style={styles.replyBtnText}>Reply via Email</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          );
+        })
+      )}
     </ScrollView>
   );
 }

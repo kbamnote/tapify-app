@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
@@ -7,11 +7,21 @@ import GlassCard from '../components/GlassCard';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useNavigation();
 
-  const handleLogin = () => {
-    if (email.trim() && password.trim()) {
-      login(email, password);
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter both email and password.');
+      return;
+    }
+
+    setIsLoading(true);
+    const result = await login(email, password);
+    setIsLoading(false);
+
+    if (!result.success) {
+      Alert.alert('Login Failed', result.message || 'Please check your credentials and try again.');
     }
   };
 
@@ -40,6 +50,7 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={!isLoading}
             />
           </View>
 
@@ -53,11 +64,20 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
+              editable={!isLoading}
             />
           </View>
 
-          <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
-            <Text style={styles.loginBtnText}>Sign In</Text>
+          <TouchableOpacity 
+            style={[styles.loginBtn, isLoading && styles.loginBtnDisabled]} 
+            onPress={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.loginBtnText}>Sign In</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.forgotBtn}>
@@ -150,6 +170,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  loginBtnDisabled: {
+    opacity: 0.7,
   },
   forgotBtn: {
     alignItems: 'center',

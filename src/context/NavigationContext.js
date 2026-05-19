@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext } from 'react';
 
+import { fetchApi } from '../config';
+
 const NavigationContext = createContext(null);
 
 export function NavigationProvider({ children }) {
@@ -7,17 +9,23 @@ export function NavigationProvider({ children }) {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const login = (email, password) => {
-    setUser({
-      email,
-      name: 'Tapify World',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop',
-      role: 'admin',
-    });
-    setCurrentScreen('dashboard');
+  const login = async (email, password) => {
+    try {
+      const response = await fetchApi('/api/login.php', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      
+      setUser(response.data?.user || response.user);
+      setCurrentScreen('dashboard');
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   };
 
   const logout = () => {
+    // In the future, we could call /api/logout.php here
     setUser(null);
     setCurrentScreen('login');
     setSidebarOpen(false);

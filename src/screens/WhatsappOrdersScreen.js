@@ -1,65 +1,115 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Alert } from 'react-native';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
-
-const MOCK_ORDERS = [
-  { id: '#TAP-1024', customer: 'Rohan Sharma', phone: '9876543210', items: '1x Premium NFC Wood Card, 2x Epoxy Keychains', total: '₹2,499', date: 'May 18, 2026', status: 'New' },
-  { id: '#TAP-1023', customer: 'Priya Patel', phone: '9112233445', items: '5x Metal Card Custom Engraving', total: '₹5,200', date: 'May 17, 2026', status: 'Delivered' },
-  { id: '#TAP-1022', customer: 'Amit Kumar', phone: '8888877777', items: '1x Tapify Smart Band V2', total: '₹1,299', date: 'May 15, 2026', status: 'Shipped' },
-];
+import { fetchApi } from '../config';
 
 export default function WhatsappOrdersScreen() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchApi('/api/store-orders/list.php');
+      if (response.success && response.data?.orders) {
+        setOrders(response.data.orders);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'New': return COLORS.accent;
-      case 'Shipped': return '#3b5998';
-      case 'Delivered': return COLORS.success;
-      default: return COLORS.textMuted;
+    const s = status?.toLowerCase() || '';
+    switch (s) {
+      case 'pending':
+      case 'new': 
+        return COLORS.accent;
+      case 'shipped':
+      case 'processing': 
+        return '#3b5998';
+      case 'delivered': 
+      case 'confirmed':
+        return COLORS.success;
+      case 'cancelled':
+        return COLORS.error;
+      default: 
+        return COLORS.textMuted;
     }
   };
 
   const handleContact = (phone) => {
-    Linking.openURL(`https://wa.me/${phone.replace(/\D/g, '')}`);
+    if (phone) {
+      Linking.openURL(`https://wa.me/${phone.replace(/\D/g, '')}`);
+    }
   };
+
+  const formatItems = (items) => {
+    if (!items || !Array.isArray(items)) return 'No items details';
+    return items.map(item => `${item.quantity}x ${item.name}`).join(', ');
+  };
+
+  const capitalize = (str) => {
+    if (!str) return 'Unknown';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>WhatsApp Sales Orders</Text>
 
-      {MOCK_ORDERS.map((order) => (
-        <GlassCard key={order.id} style={styles.card}>
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.orderId}>{order.id}</Text>
-              <Text style={styles.customerName}>{order.customer}</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: getStatusColor(order.status) + '15' }]}>
-              <Text style={[styles.badgeText, { color: getStatusColor(order.status) }]}>{order.status}</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailsBox}>
-            <Text style={styles.label}>Ordered Items:</Text>
-            <Text style={styles.itemsValue}>{order.items}</Text>
-            
-            <View style={styles.metaRow}>
+      {orders.length === 0 ? (
+        <Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textMuted }}>No orders found.</Text>
+      ) : (
+        orders.map((order) => (
+          <GlassCard key={order.id} style={styles.card}>
+            <View style={styles.header}>
               <View>
-                <Text style={styles.label}>Total Price:</Text>
-                <Text style={styles.priceValue}>{order.total}</Text>
+                <Text style={styles.orderId}>#{order.id}</Text>
+                <Text style={styles.customerName}>{order.customer_name}</Text>
               </View>
-              <View style={styles.rightAlign}>
-                <Text style={styles.label}>Order Date:</Text>
-                <Text style={styles.dateValue}>{order.date}</Text>
+              <View style={[styles.badge, { backgroundColor: getStatusColor(order.status) + '15' }]}>
+                <Text style={[styles.badgeText, { color: getStatusColor(order.status) }]}>{capitalize(order.status)}</Text>
               </View>
             </View>
-          </View>
 
-          <TouchableOpacity style={styles.whatsappBtn} onPress={() => handleContact(order.phone)}>
-            <Text style={styles.whatsappBtnText}>💬 Chat on WhatsApp</Text>
-          </TouchableOpacity>
-        </GlassCard>
-      ))}
+            <View style={styles.detailsBox}>
+              <Text style={styles.label}>Ordered Items:</Text>
+              <Text style={styles.itemsValue}>{formatItems(order.items)}</Text>
+              
+              <View style={styles.metaRow}>
+                <View>
+                  <Text style={styles.label}>Total Price:</Text>
+                  <Text style={styles.priceValue}>₹{order.total_amount}</Text>
+                </View>
+                <View style={styles.rightAlign}>
+                  <Text style={styles.label}>Order Date:</Text>
+                  <Text style={styles.dateValue}>{order.created_at_formatted}</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.whatsappBtn} onPress={() => handleContact(order.customer_phone)}>
+              <Text style={styles.whatsappBtnText}>💬 Chat on WhatsApp</Text>
+            </TouchableOpacity>
+          </GlassCard>
+        ))
+      )}
     </ScrollView>
   );
 }

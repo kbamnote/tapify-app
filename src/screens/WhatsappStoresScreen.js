@@ -1,35 +1,95 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
-
-const INITIAL_STORES = [
-  { id: 1, name: 'My Online Printing Shop', phone: '9876543210', status: true, views: 1450, orders: 12, alias: 'print-world-store' },
-  { id: 2, name: 'NFC Cards Store India', phone: '9000012345', status: false, views: 320, orders: 1, alias: 'tapify-nfc-cards' },
-];
+import { fetchApi } from '../config';
 
 export default function WhatsappStoresScreen() {
-  const [stores, setStores] = useState(INITIAL_STORES);
+  const [stores, setStores] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [editingStore, setEditingStore] = useState(null);
+  const [saving, setSaving] = useState(false);
   
   // Store fields for editing
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
 
-  const toggleStoreStatus = (id) => {
-    setStores(prev => prev.map(s => s.id === id ? { ...s, status: !s.status } : s));
+  useEffect(() => {
+    loadStores();
+  }, []);
+
+  const loadStores = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchApi('/api/stores/list.php');
+      if (response.success && response.data?.stores) {
+        setStores(response.data.stores);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load stores');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleStoreStatus = async (id, currentStatus) => {
+    try {
+      // Optimistic update
+      setStores(prev => prev.map(s => s.id === id ? { ...s, status: !currentStatus } : s));
+      
+      const response = await fetchApi('/api/stores/toggle-status.php', {
+        method: 'POST',
+        body: JSON.stringify({ id, status: !currentStatus })
+      });
+      
+      if (!response.success) {
+        // Revert on failure
+        setStores(prev => prev.map(s => s.id === id ? { ...s, status: currentStatus } : s));
+        Alert.alert('Error', 'Failed to toggle status');
+      }
+    } catch (error) {
+      setStores(prev => prev.map(s => s.id === id ? { ...s, status: currentStatus } : s));
+    }
   };
 
   const startEditing = (store) => {
     setEditingStore(store);
-    setEditName(store.name);
-    setEditPhone(store.phone);
+    setEditName(store.store_name);
+    setEditPhone(store.whatsapp_number);
   };
 
-  const saveEdit = () => {
-    setStores(prev => prev.map(s => s.id === editingStore.id ? { ...s, name: editName, phone: editPhone } : s));
-    setEditingStore(null);
+  const saveEdit = async () => {
+    try {
+      setSaving(true);
+      const response = await fetchApi('/api/stores/update.php', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          id: editingStore.id, 
+          store_name: editName, 
+          whatsapp_number: editPhone 
+        })
+      });
+      
+      if (response.success) {
+        setStores(prev => prev.map(s => s.id === editingStore.id ? { ...s, store_name: editName, whatsapp_number: editPhone } : s));
+        setEditingStore(null);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update store');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update store');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -60,50 +120,54 @@ export default function WhatsappStoresScreen() {
           </View>
 
           <View style={styles.editActions}>
-            <TouchableOpacity style={styles.saveBtn} onPress={saveEdit}>
-              <Text style={styles.saveBtnText}>Save Changes</Text>
+            <TouchableOpacity style={styles.saveBtn} onPress={saveEdit} disabled={saving}>
+              {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingStore(null)}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingStore(null)} disabled={saving}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </GlassCard>
       ) : (
-        stores.map((store) => (
-          <GlassCard key={store.id} style={styles.card}>
-            <View style={styles.header}>
-              <View style={styles.storeMain}>
-                <Text style={styles.storeName}>{store.name}</Text>
-                <Text style={styles.storeAlias}>tapify.co/store/{store.alias}</Text>
+        stores.length === 0 ? (
+          <Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textMuted }}>No stores found.</Text>
+        ) : (
+          stores.map((store) => (
+            <GlassCard key={store.id} style={styles.card}>
+              <View style={styles.header}>
+                <View style={styles.storeMain}>
+                  <Text style={styles.storeName}>{store.store_name}</Text>
+                  <Text style={styles.storeAlias}>tapify.co/{store.url_alias}</Text>
+                </View>
+                <Switch 
+                  value={store.status} 
+                  onValueChange={() => toggleStoreStatus(store.id, store.status)}
+                  trackColor={{ false: '#767577', true: COLORS.success }}
+                  thumbColor={store.status ? COLORS.primary : '#f4f3f4'}
+                />
               </View>
-              <Switch 
-                value={store.status} 
-                onValueChange={() => toggleStoreStatus(store.id)}
-                trackColor={{ false: '#767577', true: COLORS.success }}
-                thumbColor={store.status ? COLORS.primary : '#f4f3f4'}
-              />
-            </View>
 
-            <View style={styles.statsRow}>
-              <View style={styles.statCol}>
-                <Text style={styles.statLabel}>Total Views</Text>
-                <Text style={styles.statValue}>👁️ {store.views}</Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statCol}>
+                  <Text style={styles.statLabel}>Total Views</Text>
+                  <Text style={styles.statValue}>👁️ {store.view_count}</Text>
+                </View>
+                <View style={styles.statCol}>
+                  <Text style={styles.statLabel}>Orders</Text>
+                  <Text style={styles.statValue}>📦 {store.order_count}</Text>
+                </View>
+                <View style={styles.statCol}>
+                  <Text style={styles.statLabel}>WhatsApp Phone</Text>
+                  <Text style={styles.statValue}>📞 {store.whatsapp_number}</Text>
+                </View>
               </View>
-              <View style={styles.statCol}>
-                <Text style={styles.statLabel}>Orders</Text>
-                <Text style={styles.statValue}>📦 {store.orders}</Text>
-              </View>
-              <View style={styles.statCol}>
-                <Text style={styles.statLabel}>WhatsApp Phone</Text>
-                <Text style={styles.statValue}>📞 {store.phone}</Text>
-              </View>
-            </View>
 
-            <TouchableOpacity style={styles.editBtn} onPress={() => startEditing(store)}>
-              <Text style={styles.editBtnText}>Edit Configuration</Text>
-            </TouchableOpacity>
-          </GlassCard>
-        ))
+              <TouchableOpacity style={styles.editBtn} onPress={() => startEditing(store)}>
+                <Text style={styles.editBtnText}>Edit Configuration</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          ))
+        )
       )}
     </ScrollView>
   );
@@ -223,6 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flex: 0.48,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   saveBtnText: {
     color: '#ffffff',
@@ -236,6 +301,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flex: 0.48,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelBtnText: {
     color: COLORS.text,

@@ -14,10 +14,12 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import VcardsEditScreen from './src/screens/VcardsEditScreen';
 import WhatsappStoresScreen from './src/screens/WhatsappStoresScreen';
 import WhatsappOrdersScreen from './src/screens/WhatsappOrdersScreen';
+import MyDesignsScreen from './src/screens/MyDesignsScreen';
 
 // Components
 import Header from './src/components/Header';
 import Sidebar from './src/components/Sidebar';
+import TabBar from './src/components/TabBar';
 
 function ScreenRenderer() {
   const { currentScreen } = useNavigation();
@@ -41,6 +43,8 @@ function ScreenRenderer() {
       return <WhatsappStoresScreen />;
     case 'whatsapp-orders':
       return <WhatsappOrdersScreen />;
+    case 'my-designs':
+      return <MyDesignsScreen />;
     default:
       return <DashboardScreen />;
   }
@@ -65,6 +69,7 @@ function MainLayout() {
       case 'vcards-edit': return 'Edit vCard';
       case 'whatsapp-stores': return 'WhatsApp Stores';
       case 'whatsapp-orders': return 'WhatsApp Orders';
+      case 'my-designs': return 'My Designs';
       default: return 'Tapify';
     }
   };
@@ -81,6 +86,7 @@ function MainLayout() {
           <View style={styles.pageContainer}>
             <ScreenRenderer />
           </View>
+          <TabBar />
         </View>
       </View>
     </SafeAreaView>

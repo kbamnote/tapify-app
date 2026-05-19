@@ -1,0 +1,163 @@
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { useNavigation } from '../context/NavigationContext';
+import { COLORS } from '../theme/colors';
+import GlassCard from '../components/GlassCard';
+
+export default function LoginScreen() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { login } = useNavigation();
+
+  const handleLogin = () => {
+    if (email.trim() && password.trim()) {
+      login(email, password);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.brandingContainer}>
+          <Text style={styles.appName}>Tapify</Text>
+          <Text style={styles.appTagline}>Premium Digital Business Cards & Stores</Text>
+        </View>
+
+        <GlassCard style={styles.card}>
+          <Text style={styles.cardTitle}>Welcome Back</Text>
+          <Text style={styles.cardSubtitle}>Sign in to manage your premium networking system</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email Address</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="admin@tapify.com"
+              placeholderTextColor={COLORS.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              placeholderTextColor={COLORS.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          </View>
+
+          <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
+            <Text style={styles.loginBtnText}>Sign In</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.forgotBtn}>
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+        </GlassCard>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  brandingContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  appName: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: COLORS.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Playfair Display' : 'serif',
+    letterSpacing: -1,
+  },
+  appTagline: {
+    fontSize: 16,
+    color: COLORS.primaryLight,
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  card: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  input: {
+    height: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(21, 62, 63, 0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    color: COLORS.text,
+    fontSize: 15,
+  },
+  loginBtn: {
+    height: 48,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  loginBtnText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  forgotBtn: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotText: {
+    color: COLORS.accent,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+});

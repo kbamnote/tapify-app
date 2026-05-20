@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Keyboard, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 
@@ -12,6 +13,7 @@ const TAB_ITEMS = [
 
 export default function TabBar() {
   const { currentScreen, navigate } = useNavigation();
+  const insets = useSafeAreaInsets();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -32,8 +34,11 @@ export default function TabBar() {
 
   if (keyboardVisible) return null;
 
+  // Bottom inset: use safe area on all platforms (handles Android gesture nav & iOS home indicator)
+  const bottomInset = insets.bottom;
+
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { paddingBottom: bottomInset > 0 ? bottomInset : 8 }]}>
       {TAB_ITEMS.map((tab) => {
         const isActive = currentScreen === tab.id;
         return (
@@ -60,13 +65,12 @@ export default function TabBar() {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    height: 60,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 10 : 0, // Safe area padding on iOS
+    alignItems: 'flex-end',
+    paddingTop: 8,
     shadowColor: '#153e3f',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.05,

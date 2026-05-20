@@ -1,6 +1,8 @@
-import React from 'react';
-import { StyleSheet, View, SafeAreaView, Platform, useWindowDimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, SafeAreaView, Image, Animated, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 import { COLORS } from './src/theme/colors';
 
@@ -20,6 +22,9 @@ import MyDesignsScreen from './src/screens/MyDesignsScreen';
 import Header from './src/components/Header';
 import Sidebar from './src/components/Sidebar';
 import TabBar from './src/components/TabBar';
+
+// Keep the native splash visible while JS loads
+SplashScreen.preventAutoHideAsync();
 
 function ScreenRenderer() {
   const { currentScreen } = useNavigation();
@@ -52,9 +57,7 @@ function ScreenRenderer() {
 
 function MainLayout() {
   const { currentScreen, user } = useNavigation();
-  const { width } = useWindowDimensions();
 
-  // If on login page, don't show header/sidebar
   if (currentScreen === 'login' || !user) {
     return <LoginScreen />;
   }
@@ -78,9 +81,7 @@ function MainLayout() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.layout}>
-        {/* Sidebar Component handles absolute overlay on mobile */}
         <Sidebar />
-
         <View style={styles.mainContent}>
           <Header title={getScreenTitle()} />
           <View style={styles.pageContainer}>
@@ -93,11 +94,59 @@ function MainLayout() {
   );
 }
 
-export default function App() {
+// Custom splash screen with controlled logo size
+function CustomSplash({ onFinish }) {
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const screenOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Hide the native splash immediately
+    SplashScreen.hideAsync();
+
+    // Fade the logo in
+    Animated.timing(logoOpacity, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    // After 2s, fade the whole splash out and call onFinish
+    const timer = setTimeout(() => {
+      Animated.timing(screenOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => onFinish());
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <NavigationProvider>
-      <MainLayout />
-    </NavigationProvider>
+    <Animated.View style={[styles.splashContainer, { opacity: screenOpacity }]}>
+      <StatusBar style="dark" />
+      <Animated.Image
+        source={require('./assets/tapify-logo-green.png')}
+        style={[styles.splashLogo, { opacity: logoOpacity }]}
+        resizeMode="contain"
+      />
+    </Animated.View>
+  );
+}
+
+export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  return (
+    <SafeAreaProvider>
+      <NavigationProvider>
+        {showSplash ? (
+          <CustomSplash onFinish={() => setShowSplash(false)} />
+        ) : (
+          <MainLayout />
+        )}
+      </NavigationProvider>
+    </SafeAreaProvider>
   );
 }
 
@@ -116,5 +165,16 @@ const styles = StyleSheet.create({
   },
   pageContainer: {
     flex: 1,
+  },
+  // Custom splash styles
+  splashContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashLogo: {
+    width: 200,
+    height: 90,
   },
 });

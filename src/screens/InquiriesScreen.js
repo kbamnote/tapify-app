@@ -43,6 +43,20 @@ export default function InquiriesScreen() {
     Linking.openURL(`mailto:${email}?subject=Regarding your Tapify Inquiry`);
   };
 
+  const handleCall = (id, phone) => {
+    if (!phone) return Alert.alert('No phone', 'This inquiry has no phone number.');
+    markAsRead(id);
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const handleWhatsApp = (id, phone) => {
+    if (!phone) return Alert.alert('No phone', 'This inquiry has no phone number.');
+    markAsRead(id);
+    // Strip non-numeric characters for WhatsApp URL
+    const cleaned = phone.replace(/\D/g, '');
+    Linking.openURL(`whatsapp://send?phone=${cleaned}&text=Hi%2C%20regarding%20your%20Tapify%20inquiry`);
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
@@ -74,15 +88,49 @@ export default function InquiriesScreen() {
                 </View>
               </View>
 
-              <Text style={styles.contactInfo}>📧 {inq.email}  |  📞 {inq.phone}</Text>
-              
+              <View style={styles.contactRow}>
+                <TouchableOpacity
+                  style={styles.contactChip}
+                  onPress={() => Linking.openURL(`mailto:${inq.email}`)}
+                >
+                  <Text style={styles.contactChipText}>📧 {inq.email}</Text>
+                </TouchableOpacity>
+                {inq.phone ? (
+                  <TouchableOpacity
+                    style={styles.contactChip}
+                    onPress={() => handleCall(inq.id, inq.phone)}
+                  >
+                    <Text style={styles.contactChipText}>📞 {inq.phone}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
               <View style={styles.messageBox}>
                 <Text style={styles.messageText}>"{inq.message}"</Text>
               </View>
 
-              <TouchableOpacity style={styles.replyBtn} onPress={() => handleReply(inq.id, inq.email)}>
-                <Text style={styles.replyBtnText}>Reply via Email</Text>
-              </TouchableOpacity>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.callBtn}
+                  onPress={() => handleCall(inq.id, inq.phone)}
+                >
+                  <Text style={styles.actionBtnText}>📞 Call</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.whatsappBtn}
+                  onPress={() => handleWhatsApp(inq.id, inq.phone)}
+                >
+                  <Text style={styles.actionBtnText}>💬 WhatsApp</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.emailBtn}
+                  onPress={() => handleReply(inq.id, inq.email)}
+                >
+                  <Text style={styles.emailBtnText}>✉️ Email</Text>
+                </TouchableOpacity>
+              </View>
             </GlassCard>
           );
         })
@@ -140,10 +188,22 @@ const styles = StyleSheet.create({
   textReplied: {
     color: COLORS.success,
   },
-  contactInfo: {
+  contactRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  contactChip: {
+    backgroundColor: 'rgba(21, 62, 63, 0.06)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  contactChipText: {
     fontSize: 12,
-    color: COLORS.textMuted,
-    marginTop: 6,
+    color: COLORS.primary,
+    fontWeight: '500',
   },
   messageBox: {
     backgroundColor: 'rgba(21, 62, 63, 0.04)',
@@ -157,15 +217,40 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 20,
   },
-  replyBtn: {
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  callBtn: {
+    flex: 1,
     backgroundColor: COLORS.primary,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
-  replyBtnText: {
+  whatsappBtn: {
+    flex: 1,
+    backgroundColor: '#25D366',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  emailBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  actionBtnText: {
     color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emailBtnText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

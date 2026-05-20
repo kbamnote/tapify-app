@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
@@ -9,6 +9,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useNavigation();
+  const passwordRef = useRef(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -30,7 +31,11 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.brandingContainer}>
           <Image
             source={require('../../assets/tapify-logo-green.png')}
@@ -54,6 +59,9 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
               editable={!isLoading}
             />
           </View>
@@ -61,6 +69,7 @@ export default function LoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
             <TextInput
+              ref={passwordRef}
               style={styles.input}
               placeholder="••••••••"
               placeholderTextColor={COLORS.textMuted}
@@ -68,6 +77,8 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
               editable={!isLoading}
             />
           </View>
@@ -98,10 +109,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    paddingBottom: 48,
   },
   brandingContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
+  },
+  logo: {
+    width: 180,
+    height: 80,
   },
   appName: {
     fontSize: 48,

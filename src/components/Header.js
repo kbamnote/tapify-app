@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image, Modal, Share, Alert, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import { fetchApi } from '../config';
@@ -111,6 +112,9 @@ const bellStyles = StyleSheet.create({
 
 export default function Header({ title }) {
   const { user, sidebarOpen, setSidebarOpen, navigate } = useNavigation();
+  const insets = useSafeAreaInsets();
+  // Top inset for status bar — at least 0 (handles notch, punch-hole, status bar on all devices)
+  const topInset = insets.top;
   const [vcard, setVcard] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [bellModalVisible, setBellModalVisible] = useState(false);
@@ -149,7 +153,7 @@ export default function Header({ title }) {
   };
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { height: 56 + topInset, paddingTop: topInset }]}>
       <TouchableOpacity
         style={styles.menuButton}
         onPress={() => setSidebarOpen(!sidebarOpen)}
@@ -325,7 +329,6 @@ export default function Header({ title }) {
 
 const styles = StyleSheet.create({
   header: {
-    height: 64,
     backgroundColor: COLORS.surface,
     flexDirection: 'row',
     alignItems: 'center',

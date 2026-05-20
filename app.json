@@ -5,11 +5,11 @@
     "version": "1.0.2",
     "scheme": "tapifapp",
     "orientation": "portrait",
-    "icon": "./assets/app Icon.png",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/tapify-logo-green.png",
-      "resizeMode": "contain",
+      "resizeMode": "native",
       "backgroundColor": "#ffffff"
     },
     "ios": {

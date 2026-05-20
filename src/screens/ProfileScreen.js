@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
-import { fetchApi } from '../config';
+import { fetchApi, API_BASE } from '../config';
 
 export default function ProfileScreen() {
   const { user, logout } = useNavigation();
@@ -13,6 +14,10 @@ export default function ProfileScreen() {
   const [avatar, setAvatar] = useState(user?.avatar || 'https://via.placeholder.com/100');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const emailRef = useRef(null);
+  const phoneRef = useRef(null);
 
   useEffect(() => {
     loadProfile();
@@ -54,6 +59,61 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleChangePhoto = async () => {
+    // Request gallery permission
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to change your profile picture.');
+      return;
+    }
+
+    // Open image picker
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const selectedImage = result.assets[0];
+    const uri = selectedImage.uri;
+    const fileName = uri.split('/').pop();
+    const fileType = selectedImage.mimeType || 'image/jpeg';
+
+    // Build FormData for multipart upload
+    const formData = new FormData();
+    formData.append('file', {
+      uri,
+      name: fileName,
+      type: fileType,
+    });
+
+    try {
+      setUploadingPhoto(true);
+      const response = await fetch(`${API_BASE}/api/profile/upload-avatar.php`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (data.success && data.data?.avatar_url) {
+        setAvatar(data.data.avatar_url);
+        Alert.alert('Success', 'Profile photo updated successfully!');
+      } else {
+        Alert.alert('Error', data.message || 'Failed to upload photo.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
@@ -63,45 +123,74 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.keyboardView}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <GlassCard style={styles.card}>
         <View style={styles.avatarContainer}>
           <Image 
             source={{ uri: avatar }} 
             style={styles.avatar} 
           />
-          <TouchableOpacity style={styles.changePicBtn}>
-            <Text style={styles.changePicText}>Change Photo</Text>
+          <TouchableOpacity 
+            style={styles.changePicBtn} 
+            onPress={handleChangePhoto}
+            disabled={uploadingPhoto}
+          >
+            {uploadingPhoto ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <Text style={styles.changePicText}>Change Photo</Text>
+            )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full Name</Text>
-            <TextInput 
-              style={styles.input} 
-              value={name} 
-              onChangeText={setName} 
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
+              blurOnSubmit={false}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email Address</Text>
-            <TextInput 
-              style={styles.input} 
-              value={email} 
+            <TextInput
+              ref={emailRef}
+              style={styles.input}
+              value={email}
               onChangeText={setEmail}
-              keyboardType="email-address" 
+              keyboardType="email-address"
+              autoCapitalize="none"
+              returnKeyType="next"
+              onSubmitEditing={() => phoneRef.current?.focus()}
+              blurOnSubmit={false}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone Number</Text>
-            <TextInput 
-              style={styles.input} 
-              value={phone} 
-              onChangeText={setPhone} 
+            <TextInput
+              ref={phoneRef}
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
               keyboardType="phone-pad"
+              returnKeyType="done"
+              onSubmitEditing={handleSave}
             />
           </View>
 
@@ -117,18 +206,24 @@ export default function ProfileScreen() {
             <Text style={styles.logoutBtnText}>Logout</Text>
           </TouchableOpacity>
         </View>
-      </GlassCard>
-    </ScrollView>
+        </GlassCard>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   content: {
     padding: 20,
+    paddingBottom: 40,
   },
   card: {
     padding: 24,

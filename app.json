@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "tapif-app",
+    "name": "Tapify",
     "slug": "tapif-app",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "scheme": "tapifapp",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app Icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/tapify-logo-green.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },

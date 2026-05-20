@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
@@ -32,7 +32,11 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.brandingContainer}>
-          <Text style={styles.appName}>Tapify</Text>
+          <Image
+            source={require('../../assets/tapify-logo-green.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.appTagline}>Premium Digital Business Cards & Stores</Text>
         </View>
 
@@ -78,10 +82,6 @@ export default function LoginScreen() {
             ) : (
               <Text style={styles.loginBtnText}>Sign In</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.forgotBtn}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
           </TouchableOpacity>
         </GlassCard>
       </ScrollView>

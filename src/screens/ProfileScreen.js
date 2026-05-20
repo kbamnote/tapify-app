@@ -7,7 +7,7 @@ import { useNavigation } from '../context/NavigationContext';
 import { fetchApi, API_BASE } from '../config';
 
 export default function ProfileScreen() {
-  const { user, logout } = useNavigation();
+  const { user, logout, setUser } = useNavigation();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -48,6 +48,7 @@ export default function ProfileScreen() {
         body: JSON.stringify({ name, email, phone })
       });
       if (response.success) {
+        if (setUser) setUser(prev => ({ ...prev, name, email, phone }));
         Alert.alert('Success', 'Profile settings saved successfully');
       } else {
         Alert.alert('Error', response.message || 'Failed to update profile');
@@ -103,6 +104,7 @@ export default function ProfileScreen() {
       const data = await response.json();
       if (data.success && data.data?.avatar_url) {
         setAvatar(data.data.avatar_url);
+        if (setUser) setUser(prev => ({ ...prev, avatar: data.data.avatar_url }));
         Alert.alert('Success', 'Profile photo updated successfully!');
       } else {
         Alert.alert('Error', data.message || 'Failed to upload photo.');

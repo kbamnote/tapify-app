@@ -38,7 +38,7 @@ export function NavigationProvider({ children }) {
 
   return (
     <NavigationContext.Provider
-      value={{ currentScreen, user, sidebarOpen, setSidebarOpen, login, logout, navigate }}
+      value={{ currentScreen, user, setUser, sidebarOpen, setSidebarOpen, login, logout, navigate }}
     >
       {children}
     </NavigationContext.Provider>

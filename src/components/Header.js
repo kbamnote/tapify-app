@@ -153,7 +153,7 @@ export default function Header({ title }) {
   };
 
   return (
-    <View style={[styles.header, { height: 56 + topInset, paddingTop: topInset }]}>
+    <View style={[styles.header, { height: 60 }]}>
       <TouchableOpacity
         style={styles.menuButton}
         onPress={() => setSidebarOpen(!sidebarOpen)}

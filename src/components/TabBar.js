@@ -34,11 +34,8 @@ export default function TabBar() {
 
   if (keyboardVisible) return null;
 
-  // Bottom inset: use safe area on all platforms (handles Android gesture nav & iOS home indicator)
-  const bottomInset = insets.bottom;
-
   return (
-    <View style={[styles.tabBar, { paddingBottom: bottomInset > 0 ? bottomInset : 8 }]}>
+    <View style={[styles.tabBar, { paddingBottom: 10 }]}>
       {TAB_ITEMS.map((tab) => {
         const isActive = currentScreen === tab.id;
         return (
@@ -69,8 +66,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    paddingTop: 8,
+    alignItems: 'center',
+    paddingTop: 10,
     shadowColor: '#153e3f',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.05,
@@ -81,11 +78,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    height: '100%',
+    paddingVertical: 5,
     position: 'relative',
   },
   icon: {
-    fontSize: 20,
+    fontSize: 22,
     color: COLORS.textMuted,
     marginBottom: 2,
     opacity: 0.6,

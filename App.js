@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, SafeAreaView, Image, Animated, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, Image, Animated, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 import { COLORS } from './src/theme/colors';
 
@@ -97,27 +97,44 @@ function MainLayout() {
 // Custom splash screen with controlled logo size
 function CustomSplash({ onFinish }) {
   const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.8)).current;
   const screenOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // Hide the native splash immediately
     SplashScreen.hideAsync();
 
-    // Fade the logo in
-    Animated.timing(logoOpacity, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-
-    // After 2s, fade the whole splash out and call onFinish
-    const timer = setTimeout(() => {
-      Animated.timing(screenOpacity, {
-        toValue: 0,
+    // Pop the logo in
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
         duration: 400,
         useNativeDriver: true,
-      }).start(() => onFinish());
-    }, 2000);
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 6,
+        tension: 40,
+        useNativeDriver: true,
+      })
+    ]).start();
+
+    // After 1.5s, massively zoom in and fade out
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(logoScale, {
+          toValue: 25, // Zoom massively
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(screenOpacity, {
+          toValue: 0,
+          duration: 400,
+          delay: 150, // Fade out slightly after zoom starts
+          useNativeDriver: true,
+        })
+      ]).start(() => onFinish());
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -126,8 +143,14 @@ function CustomSplash({ onFinish }) {
     <Animated.View style={[styles.splashContainer, { opacity: screenOpacity }]}>
       <StatusBar style="dark" />
       <Animated.Image
-        source={require('./assets/tapify-logo-green.png')}
-        style={[styles.splashLogo, { opacity: logoOpacity }]}
+        source={require('./assets/app-icon.png')}
+        style={[
+          styles.splashLogo, 
+          { 
+            opacity: logoOpacity,
+            transform: [{ scale: logoScale }]
+          }
+        ]}
         resizeMode="contain"
       />
     </Animated.View>
@@ -174,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   splashLogo: {
-    width: 200,
-    height: 90,
+    width: 120,
+    height: 120,
   },
 });

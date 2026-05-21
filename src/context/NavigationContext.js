@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
 import { fetchApi } from '../config';
 
@@ -8,6 +8,21 @@ export function NavigationProvider({ children }) {
   const [currentScreen, setCurrentScreen] = useState('login');
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await fetchApi('/api/me.php');
+        if (response.success && response.data && response.data.user) {
+          setUser(response.data.user);
+          setCurrentScreen('dashboard');
+        }
+      } catch (err) {
+        // Not logged in or session expired
+      }
+    };
+    checkSession();
+  }, []);
 
   const login = async (email, password) => {
     try {

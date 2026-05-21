@@ -145,6 +145,103 @@ const defaultFormData = {
   social_links: {}
 };
 
+// Custom Form components to match beautiful styling
+const TextInputField = ({ label, value, onChangeText, placeholder = '', multiline = false, height = 48 }) => (
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput
+      style={[styles.input, multiline && styles.textArea, { height }]}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      multiline={multiline}
+      placeholderTextColor={COLORS.textMuted}
+    />
+  </View>
+);
+
+const SwitchInputField = ({ label, value, onValueChange }) => (
+  <View style={styles.switchGroup}>
+    <Text style={styles.switchLabel}>{label}</Text>
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ false: '#e2e8f0', true: COLORS.primary }}
+      thumbColor={value ? COLORS.accent : '#f4f3f4'}
+    />
+  </View>
+);
+
+const SelectInput = ({ label, value, options, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <TouchableOpacity style={styles.selectHeader} onPress={() => setIsOpen(!isOpen)}>
+        <Text style={styles.selectHeaderText}>
+          {options.find(opt => opt.value === value)?.label || value}
+        </Text>
+        <Text style={styles.selectHeaderArrow}>{isOpen ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+      {isOpen && (
+        <View style={styles.selectOptionsContainer}>
+          {options.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[
+                styles.selectOption,
+                opt.value === value && styles.selectOptionSelected
+              ]}
+              onPress={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+            >
+              <Text style={[
+                styles.selectOptionText,
+                opt.value === value && styles.selectOptionTextSelected
+              ]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+const ColorInput = ({ label, value, onChange }) => (
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>{label}</Text>
+    <View style={styles.colorRow}>
+      <TextInput
+        style={[styles.input, styles.colorInput]}
+        value={value}
+        onChangeText={onChange}
+        placeholder="#ffffff"
+        placeholderTextColor={COLORS.textMuted}
+      />
+      <View style={[styles.colorPreview, { backgroundColor: value || '#ffffff' }]} />
+    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paletteScroll}>
+      <View style={styles.paletteRow}>
+        {SWATCH_COLORS.map((color) => (
+          <TouchableOpacity
+            key={color}
+            style={[
+              styles.swatch,
+              { backgroundColor: color },
+              value === color && styles.selectedSwatch
+            ]}
+            onPress={() => onChange(color)}
+          />
+        ))}
+      </View>
+    </ScrollView>
+  </View>
+);
+
 export default function VcardsEditScreen() {
   const [vcardId, setVcardId] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
@@ -381,102 +478,6 @@ export default function VcardsEditScreen() {
     }));
   };
 
-  // Custom Form components to match beautiful styling
-  const TextInputField = ({ label, value, onChangeText, placeholder = '', multiline = false, height = 48 }) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[styles.input, multiline && styles.textArea, { height }]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        multiline={multiline}
-        placeholderTextColor={COLORS.textMuted}
-      />
-    </View>
-  );
-
-  const SwitchInputField = ({ label, value, onValueChange }) => (
-    <View style={styles.switchGroup}>
-      <Text style={styles.switchLabel}>{label}</Text>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: '#e2e8f0', true: COLORS.primary }}
-        thumbColor={value ? COLORS.accent : '#f4f3f4'}
-      />
-    </View>
-  );
-
-  const SelectInput = ({ label, value, options, onChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>{label}</Text>
-        <TouchableOpacity style={styles.selectHeader} onPress={() => setIsOpen(!isOpen)}>
-          <Text style={styles.selectHeaderText}>
-            {options.find(opt => opt.value === value)?.label || value}
-          </Text>
-          <Text style={styles.selectHeaderArrow}>{isOpen ? '▲' : '▼'}</Text>
-        </TouchableOpacity>
-        {isOpen && (
-          <View style={styles.selectOptionsContainer}>
-            {options.map((opt) => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[
-                  styles.selectOption,
-                  opt.value === value && styles.selectOptionSelected
-                ]}
-                onPress={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-              >
-                <Text style={[
-                  styles.selectOptionText,
-                  opt.value === value && styles.selectOptionTextSelected
-                ]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  const ColorInput = ({ label, value, onChange }) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.colorRow}>
-        <TextInput
-          style={[styles.input, styles.colorInput]}
-          value={value}
-          onChangeText={onChange}
-          placeholder="#ffffff"
-          placeholderTextColor={COLORS.textMuted}
-        />
-        <View style={[styles.colorPreview, { backgroundColor: value || '#ffffff' }]} />
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paletteScroll}>
-        <View style={styles.paletteRow}>
-          {SWATCH_COLORS.map((color) => (
-            <TouchableOpacity
-              key={color}
-              style={[
-                styles.swatch,
-                { backgroundColor: color },
-                value === color && styles.selectedSwatch
-              ]}
-              onPress={() => onChange(color)}
-            />
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
 
   if (loading) {
     return (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, FlatList } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, FlatList, Linking } from 'react-native';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
@@ -235,16 +235,28 @@ export default function AppointmentsScreen() {
               <Text style={styles.dateTimeText}>🕒 {item.time_formatted}</Text>
             </View>
 
-            {item.status?.toLowerCase() === 'pending' && (
-              <View style={styles.actions}>
+            {!!item.customer_phone && (
+              <Text style={styles.phoneText}>📞 {item.customer_phone}</Text>
+            )}
+
+            <View style={styles.actions}>
+              {!!item.customer_phone && (
+                <TouchableOpacity
+                  style={styles.callBtn}
+                  onPress={() => Linking.openURL(`tel:${item.customer_phone}`)}
+                >
+                  <Text style={styles.callBtnText}>📞 Call Customer</Text>
+                </TouchableOpacity>
+              )}
+              {item.status?.toLowerCase() === 'pending' && (
                 <TouchableOpacity 
                   style={styles.approveBtn} 
                   onPress={() => approveAppointment(item.id)}
                 >
-                  <Text style={styles.approveBtnText}>Approve Request</Text>
+                  <Text style={styles.approveBtnText}>✓ Approve Request</Text>
                 </TouchableOpacity>
-              </View>
-            )}
+              )}
+            </View>
           </GlassCard>
         ))
       )}
@@ -509,8 +521,29 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: 14,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  phoneText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    fontWeight: '500',
+    marginTop: 10,
+  },
+  callBtn: {
+    flex: 1,
+    backgroundColor: '#25D366',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  callBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   approveBtn: {
+    flex: 1,
     backgroundColor: COLORS.primary,
     paddingVertical: 10,
     borderRadius: 8,
@@ -518,7 +551,7 @@ const styles = StyleSheet.create({
   },
   approveBtnText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

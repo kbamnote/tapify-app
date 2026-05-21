@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Linking, Image, Platform } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Linking, Image, Platform, Modal } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi, API_BASE } from '../config';
@@ -159,6 +160,84 @@ const TextInputField = ({ label, value, onChangeText, placeholder = '', multilin
     />
   </View>
 );
+
+const DOBPickerField = ({ value, onChange }) => {
+  const [showPicker, setShowPicker] = useState(false);
+
+  // Parse existing value or default to today
+  const parseDate = (val) => {
+    if (val) {
+      const d = new Date(val);
+      if (!isNaN(d)) return d;
+    }
+    return new Date();
+  };
+
+  const currentDate = parseDate(value);
+
+  const formatDisplay = (val) => {
+    if (!val) return 'Tap to select date';
+    const d = new Date(val);
+    if (isNaN(d)) return val;
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+
+  const handleChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') setShowPicker(false);
+    if (event.type === 'dismissed') { setShowPicker(false); return; }
+    if (selectedDate) {
+      const yyyy = selectedDate.getFullYear();
+      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(selectedDate.getDate()).padStart(2, '0');
+      onChange(`${yyyy}-${mm}-${dd}`);
+      if (Platform.OS === 'ios') setShowPicker(false);
+    }
+  };
+
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>Date of Birth</Text>
+      <TouchableOpacity style={styles.dobPickerBtn} onPress={() => setShowPicker(true)}>
+        <Text style={[styles.dobPickerText, !value && { color: COLORS.textMuted }]}>
+          📅  {formatDisplay(value)}
+        </Text>
+        <Text style={styles.dobPickerArrow}>▼</Text>
+      </TouchableOpacity>
+      {showPicker && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="slide" visible={showPicker}>
+            <View style={styles.dobModalOverlay}>
+              <View style={styles.dobModalContent}>
+                <View style={styles.dobModalHeader}>
+                  <Text style={styles.dobModalTitle}>Select Date of Birth</Text>
+                  <TouchableOpacity onPress={() => setShowPicker(false)}>
+                    <Text style={styles.dobModalDone}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={currentDate}
+                  mode="date"
+                  display="spinner"
+                  maximumDate={new Date()}
+                  onChange={handleChange}
+                  style={{ width: '100%' }}
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={currentDate}
+            mode="date"
+            display="calendar"
+            maximumDate={new Date()}
+            onChange={handleChange}
+          />
+        )
+      )}
+    </View>
+  );
+};
 
 const SwitchInputField = ({ label, value, onValueChange }) => (
   <View style={styles.switchGroup}>
@@ -727,11 +806,9 @@ export default function VcardsEditScreen() {
                 onChange={(val) => updateField('location_type', val)}
               />
 
-              <TextInputField 
-                label="Date of Birth" 
-                value={formData.dob} 
-                onChangeText={(val) => updateField('dob', val)} 
-                placeholder="YYYY-MM-DD"
+              <DOBPickerField
+                value={formData.dob}
+                onChange={(val) => updateField('dob', val)}
               />
 
               <TextInputField 
@@ -763,10 +840,17 @@ export default function VcardsEditScreen() {
                 value={formData.default_language} 
                 options={[
                   { value: 'en', label: 'English' },
-                  { value: 'es', label: 'Spanish' },
-                  { value: 'fr', label: 'French' },
-                  { value: 'de', label: 'German' },
-                  { value: 'hi', label: 'Hindi' }
+                  { value: 'hi', label: 'Hindi (हिन्दी)' },
+                  { value: 'bn', label: 'Bengali (বাংলা)' },
+                  { value: 'te', label: 'Telugu (తెలుగు)' },
+                  { value: 'mr', label: 'Marathi (मराठी)' },
+                  { value: 'ta', label: 'Tamil (தமிழ்)' },
+                  { value: 'gu', label: 'Gujarati (ગુજરાતી)' },
+                  { value: 'kn', label: 'Kannada (ಕನ್ನಡ)' },
+                  { value: 'ml', label: 'Malayalam (മലയാളം)' },
+                  { value: 'pa', label: 'Punjabi (ਪੰਜਾਬੀ)' },
+                  { value: 'or', label: 'Odia (ଓଡ଼ିଆ)' },
+                  { value: 'ur', label: 'Urdu (اردو)' },
                 ]}
                 onChange={(val) => updateField('default_language', val)}
               />
@@ -1634,5 +1718,57 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textMuted,
     marginTop: 6,
+  },
+
+  // DOB Picker
+  dobPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+  },
+  dobPickerText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  dobPickerArrow: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
+  dobModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  dobModalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+  dobModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dobModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  dobModalDone: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Image, Platform, Modal, Linking } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Image, Platform, Modal, Linking, Keyboard } from 'react-native';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi, API_BASE } from '../config';
@@ -122,9 +122,23 @@ export default function WhatsappStoresScreen() {
 
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     loadStores();
+    
+    // Add keyboard listeners to dynamically pad the bottom of the ScrollView
+    const showSub = Platform.OS === 'android' ? 
+      Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height)) :
+      Keyboard.addListener('keyboardWillShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hideSub = Platform.OS === 'android' ? 
+      Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0)) :
+      Keyboard.addListener('keyboardWillHide', () => setKeyboardHeight(0));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   const loadStores = async () => {
@@ -485,7 +499,7 @@ export default function WhatsappStoresScreen() {
         </View>
 
         {/* Tab Content */}
-        <ScrollView style={styles.editorContent} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        <ScrollView style={styles.editorContent} contentContainerStyle={{ padding: 20, paddingBottom: keyboardHeight + 100 }}>
           
           {activeTab === 'basic' && (
             <GlassCard style={styles.tabCard}>

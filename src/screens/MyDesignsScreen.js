@@ -15,51 +15,88 @@ import {
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import { useNavigation } from '../context/NavigationContext';
+import { API_BASE } from '../config';
 
 export default function MyDesignsScreen() {
+  const { navigate } = useNavigation();
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'categories', 'saved'
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedGlobalCategory, setSelectedGlobalCategory] = useState(null);
 
   // Live data from API
   const [categories, setCategories] = useState([]);
   const [designs, setDesigns] = useState([]);
   const [savedIds, setSavedIds] = useState([]);
 
+  // Live data for new Categories feature
+  const [globalCategories, setGlobalCategories] = useState([]);
+  const [globalCategoryContent, setGlobalCategoryContent] = useState([]);
+
   // Loading states
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingDesigns, setLoadingDesigns] = useState(false);
+  const [loadingGlobal, setLoadingGlobal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [catError, setCatError] = useState(null);
 
   // ─── Load categories on mount ────────────────────────────────────────────────
   useEffect(() => {
     loadCategories();
+    loadGlobalCategories();
   }, []);
 
   // ─── Load designs whenever tab / selectedCategory changes ────────────────────
   useEffect(() => {
-    if (activeTab === 'home') {
-      // Home tab shows designs of first (festival/default) category
-      if (categories.length > 0) {
-        loadDesigns(categories[0].id);
-      }
-    } else if (activeTab === 'categories' && selectedCategory) {
+    if (activeTab === 'home' && selectedCategory !== null) {
       loadDesigns(selectedCategory);
     } else if (activeTab === 'saved') {
       loadSavedDesigns();
+    } else if (activeTab === 'categories' && selectedGlobalCategory !== null) {
+      loadGlobalCategoryContent(selectedGlobalCategory);
     }
-  }, [activeTab, selectedCategory, categories]);
+  }, [activeTab, selectedCategory, selectedGlobalCategory]);
 
   const loadCategories = async () => {
     try {
       setLoadingCategories(true);
+      setCatError(null);
       const res = await fetchApi('/api/designs/categories.php');
-      if (res.success && res.data?.categories) {
+      if (res.data?.categories) {
         setCategories(res.data.categories);
+      } else {
+        setCategories([]);
       }
     } catch (e) {
-      // Silently fallback — app still works
+      setCatError(e.message || 'Failed to load categories');
+      setCategories([]);
     } finally {
       setLoadingCategories(false);
+    }
+  };
+
+  const loadGlobalCategories = async () => {
+    try {
+      const res = await fetchApi('/api/categories/list.php');
+      if (res.success && res.data) {
+        setGlobalCategories(res.data.categories || []);
+      }
+    } catch (e) {
+      console.log('Failed to load global categories', e);
+    }
+  };
+
+  const loadGlobalCategoryContent = async (categoryId) => {
+    try {
+      setLoadingGlobal(true);
+      const res = await fetchApi(`/api/categories/content/list.php?category_id=${categoryId}`);
+      if (res.success && res.data) {
+        setGlobalCategoryContent(res.data.content || []);
+      }
+    } catch (e) {
+      setGlobalCategoryContent([]);
+    } finally {
+      setLoadingGlobal(false);
     }
   };
 
@@ -105,7 +142,9 @@ export default function MyDesignsScreen() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSelectedCategory(null);
+    setSelectedGlobalCategory(null);
     setDesigns([]);
+    setGlobalCategoryContent([]);
   };
 
   const toggleSave = async (designId) => {
@@ -140,44 +179,60 @@ export default function MyDesignsScreen() {
     const isSaved = savedIds.includes(Number(design.id));
     return (
       <View key={design.id} style={styles.cardContainer}>
-        <GlassCard style={styles.card}>
-          <Image source={{ uri: design.image_url }} style={styles.cardImage} />
-          <View style={styles.cardBody}>
-            <View style={styles.titleRow}>
-              <Text style={styles.cardTitle}>{design.title}</Text>
-              <Text style={styles.categoryBadge}>{design.category_name}</Text>
+        <TouchableOpacity activeOpacity={0.9} onPress={() => navigate('design-customize', { design })}>
+          <GlassCard style={styles.card}>
+            <Image source={{ uri: design.image_url }} style={styles.cardImage} />
+            <View style={styles.cardBody}>
+              <View style={styles.titleRow}>
+                <Text style={styles.cardTitle}>{design.title}</Text>
+                <Text style={styles.categoryBadge}>{design.category_name}</Text>
+              </View>
+              {!!design.description && (
+                <Text style={styles.cardDesc}>{design.description}</Text>
+              )}
+              <View style={styles.cardFooter}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.saveButton, isSaved && styles.savedActiveButton]}
+                  onPress={() => toggleSave(Number(design.id))}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.actionText}>{isSaved ? '❤️ Saved' : '🤍 Save'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.shareButton]}
+                  onPress={() => handleShare(design)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.actionText, styles.shareText]}>📤 Share</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            {!!design.description && (
-              <Text style={styles.cardDesc}>{design.description}</Text>
-            )}
-            <View style={styles.cardFooter}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.saveButton, isSaved && styles.savedActiveButton]}
-                onPress={() => toggleSave(Number(design.id))}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.actionText}>{isSaved ? '❤️ Saved' : '🤍 Save'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.shareButton]}
-                onPress={() => handleShare(design)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.actionText, styles.shareText]}>📤 Share</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </GlassCard>
+          </GlassCard>
+        </TouchableOpacity>
       </View>
     );
   };
 
-  // ─── Render loading skeleton ──────────────────────────────────────────────────
+  // ─── Render: loading ─────────────────────────────────────────────────────────
   if (loadingCategories) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={{ marginTop: 16, color: COLORS.textMuted, fontSize: 14 }}>Loading designs...</Text>
+        <Text style={{ marginTop: 16, color: COLORS.textMuted, fontSize: 14 }}>Loading categories...</Text>
+      </View>
+    );
+  }
+
+  // ─── Render: error ───────────────────────────────────────────────────────────
+  if (catError) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
+        <Text style={{ fontSize: 40, marginBottom: 16 }}>⚠️</Text>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.primary, marginBottom: 8, textAlign: 'center' }}>Failed to Load</Text>
+        <Text style={{ fontSize: 13, color: COLORS.textMuted, textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>{catError}</Text>
+        <TouchableOpacity style={[styles.actionButton, styles.shareButton, { paddingHorizontal: 24, flex: 0 }]} onPress={loadCategories}>
+          <Text style={[styles.actionText, styles.shareText]}>🔄 Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -210,29 +265,6 @@ export default function MyDesignsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Sub Category Picker */}
-      {activeTab === 'categories' && selectedCategory !== null && (
-        <View style={styles.categoryPicker}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-            {categories.map((cat) => {
-              const isCatActive = selectedCategory === cat.id;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.catFilterBtn, isCatActive && styles.catFilterBtnActive]}
-                  onPress={() => setSelectedCategory(cat.id)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.catFilterText, isCatActive && styles.catFilterTextActive]}>
-                    {cat.icon} {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
       {/* Scrollable Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -240,31 +272,102 @@ export default function MyDesignsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
       >
         {/* Categories Grid */}
-        {activeTab === 'categories' && selectedCategory === null && (
+        {activeTab === 'home' && selectedCategory === null && (
           <View style={styles.gridContainer}>
             <Text style={styles.gridHeaderTitle}>Choose a Category</Text>
             <View style={styles.categoryGrid}>
               {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
-                  style={[styles.gridCard, { backgroundColor: cat.bg_color || '#f3f4f6' }]}
+                  style={styles.newGridCard}
                   onPress={() => setSelectedCategory(cat.id)}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.gridCardIcon}>{cat.icon || '🎨'}</Text>
-                  <Text style={[styles.gridCardText, { color: cat.text_color || '#374151' }]}>{cat.name}</Text>
+                  {cat.image_url ? (
+                    <Image source={{ uri: cat.image_url }} style={styles.newGridCardImage} />
+                  ) : (
+                    <View style={[styles.newGridCardImage, { backgroundColor: cat.bg_color || '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ fontSize: 36 }}>{cat.icon || '🎨'}</Text>
+                    </View>
+                  )}
+                  <View style={styles.newGridCardLabelContainer}>
+                    <Text style={styles.newGridCardText}>{cat.name}</Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         )}
 
-        {/* Design List */}
-        {(activeTab === 'home' || activeTab === 'saved' || (activeTab === 'categories' && selectedCategory !== null)) && (
+        {/* Categories Tab Grid */}
+        {activeTab === 'categories' && selectedGlobalCategory === null && (
+          <View style={styles.gridContainer}>
+            <Text style={styles.gridHeaderTitle}>Browse Categories</Text>
+            <View style={styles.categoryGrid}>
+              {globalCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={styles.newGridCard}
+                  onPress={() => setSelectedGlobalCategory(cat.id)}
+                  activeOpacity={0.85}
+                >
+                  <Image source={{ uri: cat.image_url ? `${API_BASE}${cat.image_url}` : null }} style={styles.newGridCardImage} />
+                  <View style={styles.newGridCardLabelContainer}>
+                    <Text style={styles.newGridCardText}>{cat.name}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {globalCategories.length === 0 && (
+              <Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textMuted }}>No categories available.</Text>
+            )}
+          </View>
+        )}
+
+        {/* Global Category Content Viewer */}
+        {activeTab === 'categories' && selectedGlobalCategory !== null && (
           <>
-            {activeTab === 'categories' && selectedCategory !== null && (
+            <TouchableOpacity style={styles.backButtonRow} onPress={() => setSelectedGlobalCategory(null)}>
+              <Text style={styles.backButtonText}>← Back to Categories</Text>
+            </TouchableOpacity>
+
+            {loadingGlobal ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+            ) : globalCategoryContent.length > 0 ? (
+              globalCategoryContent.map(item => (
+                <GlassCard key={item.id} style={{ marginBottom: 15, padding: 15 }}>
+                  {item.type !== 'text' && item.image_url && (
+                    <Image source={{ uri: `${API_BASE}${item.image_url}` }} style={{ width: '100%', height: 250, borderRadius: 10, marginBottom: 10 }} resizeMode="cover" />
+                  )}
+                  {item.type !== 'image' && item.text_content && (
+                    <Text style={{ fontSize: 15, color: COLORS.text, lineHeight: 22, fontWeight: '500' }}>{item.text_content}</Text>
+                  )}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{new Date(item.created_at).toLocaleDateString()}</Text>
+                    <TouchableOpacity style={styles.catContentActionBtn} onPress={() => {
+                        Share.share({ message: item.text_content || 'Check out this post from Tapify!', url: item.image_url ? `${API_BASE}${item.image_url}` : undefined });
+                    }}>
+                      <Text style={styles.catContentActionText}>📤 Share</Text>
+                    </TouchableOpacity>
+                  </View>
+                </GlassCard>
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>📭</Text>
+                <Text style={styles.emptyTitle}>No Content Found</Text>
+                <Text style={styles.emptySubtitle}>There is no content in this category yet.</Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {/* Design List (Home / Saved) */}
+        {(activeTab === 'saved' || (activeTab === 'home' && selectedCategory !== null)) && (
+          <>
+            {activeTab === 'home' && selectedCategory !== null && (
               <TouchableOpacity style={styles.backButtonRow} onPress={() => setSelectedCategory(null)}>
-                <Text style={styles.backButtonText}>← Back to Categories</Text>
+                <Text style={styles.backButtonText}>← Back to Home Categories</Text>
               </TouchableOpacity>
             )}
 
@@ -345,6 +448,39 @@ const styles = StyleSheet.create({
   },
   gridCardIcon: { fontSize: 36, marginBottom: 10 },
   gridCardText: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  
+  newGridCard: {
+    width: '47%',
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  newGridCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  newGridCardLabelContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  newGridCardText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
 
   scrollContent: { padding: 16, paddingBottom: 40 },
   cardContainer: { marginBottom: 16 },
@@ -377,4 +513,16 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: COLORS.primary, marginBottom: 8 },
   emptySubtitle: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 },
+  
+  catContentActionBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  catContentActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

@@ -6,6 +6,7 @@ const NavigationContext = createContext(null);
 
 export function NavigationProvider({ children }) {
   const [currentScreen, setCurrentScreen] = useState('login');
+  const [params, setParams] = useState(null);
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -46,14 +47,15 @@ export function NavigationProvider({ children }) {
     setSidebarOpen(false);
   };
 
-  const navigate = (screen) => {
+  const navigate = (screen, screenParams = null) => {
     setCurrentScreen(screen);
+    setParams(screenParams);
     setSidebarOpen(false);
   };
 
   return (
     <NavigationContext.Provider
-      value={{ currentScreen, user, setUser, sidebarOpen, setSidebarOpen, login, logout, navigate }}
+      value={{ currentScreen, params, user, setUser, sidebarOpen, setSidebarOpen, login, logout, navigate }}
     >
       {children}
     </NavigationContext.Provider>

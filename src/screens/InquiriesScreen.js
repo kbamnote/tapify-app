@@ -57,6 +57,19 @@ export default function InquiriesScreen() {
     Linking.openURL(`whatsapp://send?phone=${cleaned}&text=Hi%2C%20regarding%20your%20Tapify%20inquiry`);
   };
 
+  const formatTime = (dateString, timeAgoString) => {
+    if (!dateString) return timeAgoString || 'Unknown time';
+    // Ensure we treat the MySQL timestamp as UTC to convert correctly to local device time
+    const isoString = dateString.includes('T') ? dateString : dateString.replace(' ', 'T') + 'Z';
+    const date = new Date(isoString);
+    if (isNaN(date)) return timeAgoString || 'Unknown time';
+    
+    return date.toLocaleString('en-US', {
+      month: 'short', day: 'numeric', 
+      hour: 'numeric', minute: '2-digit'
+    });
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
@@ -79,7 +92,7 @@ export default function InquiriesScreen() {
               <View style={styles.header}>
                 <View>
                   <Text style={styles.senderName}>{inq.name}</Text>
-                  <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{inq.time_ago}</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{formatTime(inq.created_at, inq.time_ago)}</Text>
                 </View>
                 <View style={[styles.badge, status === 'New' ? styles.badgeNew : styles.badgeReplied]}>
                   <Text style={[styles.badgeText, status === 'New' ? styles.textNew : styles.textReplied]}>

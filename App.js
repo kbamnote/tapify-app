@@ -17,6 +17,8 @@ import VcardsEditScreen from './src/screens/VcardsEditScreen';
 import WhatsappStoresScreen from './src/screens/WhatsappStoresScreen';
 import WhatsappOrdersScreen from './src/screens/WhatsappOrdersScreen';
 import MyDesignsScreen from './src/screens/MyDesignsScreen';
+import DesignCustomizeScreen from './src/screens/DesignCustomizeScreen';
+import ReviewsScreen from './src/screens/ReviewsScreen';
 
 // Components
 import Header from './src/components/Header';
@@ -50,6 +52,10 @@ function ScreenRenderer() {
       return <WhatsappOrdersScreen />;
     case 'my-designs':
       return <MyDesignsScreen />;
+    case 'design-customize':
+      return <DesignCustomizeScreen />;
+    case 'reviews-funnel':
+      return <ReviewsScreen />;
     default:
       return <DashboardScreen />;
   }
@@ -73,6 +79,8 @@ function MainLayout() {
       case 'whatsapp-stores': return 'WhatsApp Stores';
       case 'whatsapp-orders': return 'WhatsApp Orders';
       case 'my-designs': return 'My Designs';
+      case 'design-customize': return 'Customize Design';
+      case 'reviews-funnel': return 'Reviews Funnel';
       default: return 'Tapify';
     }
   };

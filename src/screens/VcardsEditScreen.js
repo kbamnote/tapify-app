@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Linking, Image, Platform, Modal } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Linking, Image, Platform, Modal, Keyboard } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
@@ -328,9 +328,22 @@ export default function VcardsEditScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     loadVcard();
+
+    const showSub = Platform.OS === 'android' ? 
+      Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height)) :
+      Keyboard.addListener('keyboardWillShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hideSub = Platform.OS === 'android' ? 
+      Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0)) :
+      Keyboard.addListener('keyboardWillHide', () => setKeyboardHeight(0));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   const loadVcard = async () => {
@@ -597,7 +610,7 @@ export default function VcardsEditScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={styles.scrollBody} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={styles.scrollBody} contentContainerStyle={[styles.contentContainer, { paddingBottom: keyboardHeight + 40 }]}>
         <GlassCard style={styles.card}>
           
           {/* TAB 1: BASIC DETAILS */}

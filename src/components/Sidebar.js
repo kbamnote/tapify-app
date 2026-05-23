@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { id: 'whatsapp-stores',  label: 'WhatsApp Stores',  icon: '🏪' },
   { id: 'whatsapp-orders',  label: 'WhatsApp Orders',  icon: '🛍️' },
   { id: 'my-designs',       label: 'My Designs',       icon: '🎨' },
+  { id: 'reviews-funnel',   label: 'Reviews Funnel',   icon: '⭐' },
   { id: 'settings',         label: 'Settings',         icon: '⚙️' },
 ];
 

@@ -11,6 +11,7 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
@@ -23,6 +24,8 @@ export default function MyDesignsScreen() {
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'categories', 'saved'
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedGlobalCategory, setSelectedGlobalCategory] = useState(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Live data from API
   const [categories, setCategories] = useState([]);
@@ -145,6 +148,7 @@ export default function MyDesignsScreen() {
     setSelectedGlobalCategory(null);
     setDesigns([]);
     setGlobalCategoryContent([]);
+    setSearchQuery('');
   };
 
   const toggleSave = async (designId) => {
@@ -275,27 +279,61 @@ export default function MyDesignsScreen() {
         {activeTab === 'home' && selectedCategory === null && (
           <View style={styles.gridContainer}>
             <Text style={styles.gridHeaderTitle}>Choose a Category</Text>
-            <View style={styles.categoryGrid}>
-              {categories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={styles.newGridCard}
-                  onPress={() => setSelectedCategory(cat.id)}
-                  activeOpacity={0.85}
-                >
-                  {cat.image_url ? (
-                    <Image source={{ uri: cat.image_url }} style={styles.newGridCardImage} />
-                  ) : (
-                    <View style={[styles.newGridCardImage, { backgroundColor: cat.bg_color || '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                      <Text style={{ fontSize: 36 }}>{cat.icon || '🎨'}</Text>
-                    </View>
-                  )}
-                  <View style={styles.newGridCardLabelContainer}>
-                    <Text style={styles.newGridCardText}>{cat.name}</Text>
-                  </View>
+
+            {/* Search bar */}
+            <View style={styles.searchBar}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search categories..."
+                placeholderTextColor={COLORS.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.searchClear}>✕</Text>
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
+
+            {(() => {
+              const q = searchQuery.trim().toLowerCase();
+              const filtered = q
+                ? categories.filter(cat => cat.name.toLowerCase().includes(q))
+                : categories;
+              return filtered.length > 0 ? (
+                <View style={styles.categoryGrid}>
+                  {filtered.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={styles.newGridCard}
+                      onPress={() => setSelectedCategory(cat.id)}
+                      activeOpacity={0.85}
+                    >
+                      {cat.image_url ? (
+                        <Image source={{ uri: cat.image_url }} style={styles.newGridCardImage} />
+                      ) : (
+                        <View style={[styles.newGridCardImage, { backgroundColor: cat.bg_color || '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 36 }}>{cat.icon || '🎨'}</Text>
+                        </View>
+                      )}
+                      <View style={styles.newGridCardLabelContainer}>
+                        <Text style={styles.newGridCardText}>{cat.name}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyIcon}>🔍</Text>
+                  <Text style={styles.emptyTitle}>No Results</Text>
+                  <Text style={styles.emptySubtitle}>No categories match "{searchQuery}"</Text>
+                </View>
+              );
+            })()}
           </View>
         )}
 
@@ -303,24 +341,59 @@ export default function MyDesignsScreen() {
         {activeTab === 'categories' && selectedGlobalCategory === null && (
           <View style={styles.gridContainer}>
             <Text style={styles.gridHeaderTitle}>Browse Categories</Text>
-            <View style={styles.categoryGrid}>
-              {globalCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={styles.newGridCard}
-                  onPress={() => setSelectedGlobalCategory(cat.id)}
-                  activeOpacity={0.85}
-                >
-                  <Image source={{ uri: cat.image_url ? `${API_BASE}${cat.image_url}` : null }} style={styles.newGridCardImage} />
-                  <View style={styles.newGridCardLabelContainer}>
-                    <Text style={styles.newGridCardText}>{cat.name}</Text>
-                  </View>
+
+            {/* Search bar */}
+            <View style={styles.searchBar}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search categories..."
+                placeholderTextColor={COLORS.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.searchClear}>✕</Text>
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
-            {globalCategories.length === 0 && (
-              <Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textMuted }}>No categories available.</Text>
-            )}
+
+            {(() => {
+              const q = searchQuery.trim().toLowerCase();
+              const filtered = q
+                ? globalCategories.filter(cat => cat.name.toLowerCase().includes(q))
+                : globalCategories;
+              return filtered.length > 0 ? (
+                <View style={styles.categoryGrid}>
+                  {filtered.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={styles.newGridCard}
+                      onPress={() => setSelectedGlobalCategory(cat.id)}
+                      activeOpacity={0.85}
+                    >
+                      <Image source={{ uri: cat.image_url ? `${API_BASE}${cat.image_url}` : null }} style={styles.newGridCardImage} />
+                      <View style={styles.newGridCardLabelContainer}>
+                        <Text style={styles.newGridCardText}>{cat.name}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyIcon}>🔍</Text>
+                  <Text style={styles.emptyTitle}>No Results</Text>
+                  <Text style={styles.emptySubtitle}>
+                    {globalCategories.length === 0
+                      ? 'No categories available.'
+                      : `No categories match "${searchQuery}"`}
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
         )}
 
@@ -524,5 +597,38 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(21,62,63,0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 20,
+    shadowColor: '#153e3f',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  searchIcon: {
+    fontSize: 15,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+    padding: 0,
+  },
+  searchClear: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+    paddingLeft: 8,
   },
 });

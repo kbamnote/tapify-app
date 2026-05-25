@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Linking, Image, Platform, Modal, Keyboard } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Linking, Image, Platform, Modal, Keyboard, KeyboardAvoidingView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
@@ -11,58 +11,49 @@ const { width } = Dimensions.get('window');
 const SWATCH_COLORS = ['#153e3f', '#25D366', '#d19a66', '#000000', '#3b5998', '#ef4444', '#ffffff', '#8e44ad', '#2980b9', '#f1c40f'];
 
 const TEMPLATES = [
-  { id: 'vcard1', name: 'Simple Contact' },
-  { id: 'vcard2', name: 'Executive Profile' },
-  { id: 'vcard3', name: 'Clean Canvas' },
-  { id: 'vcard4', name: 'Professional' },
-  { id: 'vcard5', name: 'Corporate Connect' },
-  { id: 'vcard6', name: 'Modern Edge' },
-  { id: 'vcard7', name: 'Business Beacon' },
-  { id: 'vcard8', name: 'Corporate Classic' },
-  { id: 'vcard9', name: 'Corporate Identity' },
-  { id: 'vcard10', name: 'Pro Network' },
-  { id: 'vcard11', name: 'Portfolio' },
-  { id: 'vcard12', name: 'Gym (Dark)' },
-  { id: 'vcard13', name: 'Hospital' },
-  { id: 'vcard14', name: 'Event Management' },
-  { id: 'vcard15', name: 'Salon' },
-  { id: 'vcard16', name: 'Lawyer' },
-  { id: 'vcard17', name: 'Programmer (Dark)' },
-  { id: 'vcard18', name: 'CEO/CXO' },
-  { id: 'vcard19', name: 'Fashion Beauty' },
-  { id: 'vcard20', name: 'Culinary Food Services' },
-  { id: 'vcard21', name: 'Social Media' },
-  { id: 'vcard22', name: 'Dynamic vCard' },
-  { id: 'vcard23', name: 'Consulting Services' },
-  { id: 'vcard24', name: 'School Templates' },
-  { id: 'vcard25', name: 'Social Services' },
-  { id: 'vcard26', name: 'Retail E-commerce' },
-  { id: 'vcard27', name: 'Pet Shop' },
-  { id: 'vcard28', name: 'Pet Clinic' },
-  { id: 'vcard29', name: 'Marriage' },
-  { id: 'vcard30', name: 'Taxi Service (Dark)' },
-  { id: 'vcard31', name: 'Handyman Services' },
-  { id: 'vcard32', name: 'Interior Designer' },
-  { id: 'vcard33', name: 'Musician (Dark)' },
-  { id: 'vcard34', name: 'Photographer (Dark)' },
-  { id: 'vcard35', name: 'Real Estate' },
-  { id: 'vcard36', name: 'Travel Agency' },
-  { id: 'vcard37', name: 'Flower Garden' },
-  { id: 'vcard38', name: 'Architecture' },
-  { id: 'vcard39', name: 'Bio Black (Dark)' },
-  { id: 'vcard40', name: 'Bio White' },
-  { id: 'vcard41', name: 'Social Vcard' },
-  { id: 'vcard42', name: 'Social Vcard 2' }
+  { id: 'vcard01', name: 'Corporate Executive',      primary: '#c9a84c', secondary: '#f0c96a', bg: '#0a1628', dark: true  },
+  { id: 'vcard02', name: 'Medical Doctor',           primary: '#0d9488', secondary: '#14b8a6', bg: '#f8fafc'              },
+  { id: 'vcard03', name: 'Creative Designer',        primary: '#7c3aed', secondary: '#e879f9', bg: '#0c0512', dark: true  },
+  { id: 'vcard04', name: 'Real Estate',              primary: '#c87941', secondary: '#8b5e3c', bg: '#fdf8f0'              },
+  { id: 'vcard05', name: 'Restaurant Chef',          primary: '#c0392b', secondary: '#d4af37', bg: '#1a0a0a', dark: true  },
+  { id: 'vcard06', name: 'Fitness Trainer',          primary: '#f97316', secondary: '#fbbf24', bg: '#0d0d0d', dark: true  },
+  { id: 'vcard07', name: 'Tech Developer',           primary: '#00e5ff', secondary: '#00ff88', bg: '#050d12', dark: true  },
+  { id: 'vcard08', name: 'Lawyer & Legal',           primary: '#0b1c3d', secondary: '#b8952a', bg: '#f4f6f9'              },
+  { id: 'vcard09', name: 'Beauty Salon',             primary: '#c9796a', secondary: '#e8b898', bg: '#fff8f8'              },
+  { id: 'vcard10', name: 'Musician & Artist',        primary: '#7b2fff', secondary: '#ff2d9e', bg: '#04050e', dark: true  },
+  { id: 'vcard11', name: 'Photographer',             primary: '#d4a853', secondary: '#f0c878', bg: '#0a0a0a', dark: true  },
+  { id: 'vcard12', name: 'Financial Advisor',        primary: '#0f2b52', secondary: '#2563eb', bg: '#f0f4f8'              },
+  { id: 'vcard13', name: 'Architect',                primary: '#1c1c1c', secondary: '#c45c26', bg: '#f7f5f0'              },
+  { id: 'vcard14', name: 'Yoga & Wellness',          primary: '#7a9e7e', secondary: '#a8c5a0', bg: '#f5f0eb'              },
+  { id: 'vcard15', name: 'Digital Marketing',        primary: '#6c47ff', secondary: '#ff47b8', bg: '#060614', dark: true  },
+  { id: 'vcard16', name: 'Interior Designer',        primary: '#c17f5c', secondary: '#e8a07a', bg: '#f9f6f1'              },
+  { id: 'vcard17', name: 'Wedding Planner',          primary: '#c9607a', secondary: '#e8849a', bg: '#fdf8fc'              },
+  { id: 'vcard18', name: 'Dentist',                  primary: '#0891b2', secondary: '#06b6d4', bg: '#f0fffe'              },
+  { id: 'vcard19', name: 'CA & Accountant',          primary: '#d4a017', secondary: '#f0c040', bg: '#0e1a2b', dark: true  },
+  { id: 'vcard20', name: 'School Teacher',           primary: '#f59e0b', secondary: '#fbbf24', bg: '#fffbf0'              },
+  { id: 'vcard21', name: 'Fashion Designer',         primary: '#e8b4b8', secondary: '#c9a96e', bg: '#0c0c0c', dark: true  },
+  { id: 'vcard22', name: 'Travel Agent',             primary: '#0ea5e9', secondary: '#38bdf8', bg: '#f0f9ff'              },
+  { id: 'vcard23', name: 'Automobile Dealer',        primary: '#dc2626', secondary: '#c0c8d4', bg: '#0a0a0a', dark: true  },
+  { id: 'vcard24', name: 'Event Planner',            primary: '#9333ea', secondary: '#ec4899', bg: '#0d0010', dark: true  },
+  { id: 'vcard25', name: 'Pharma & Medical',         primary: '#16a34a', secondary: '#22c55e', bg: '#f0fdf4'              },
+  { id: 'vcard26', name: 'NGO & Social',             primary: '#7c3aed', secondary: '#a78bfa', bg: '#f5f3ff'              },
+  { id: 'vcard27', name: 'Coaching Institute',       primary: '#2563eb', secondary: '#3b82f6', bg: '#eff6ff'              },
+  { id: 'vcard28', name: 'Electrician & Contractor', primary: '#d97706', secondary: '#f59e0b', bg: '#fffbeb'              },
 ];
 
 const TABS = [
   { id: 'basic', label: 'Basic' },
   { id: 'personal', label: 'Personal' },
   { id: 'templates', label: 'Templates' },
-  { id: 'appearance', label: 'Appearance' },
+  // { id: 'appearance', label: 'Appearance' },
   { id: 'features', label: 'Features' },
   { id: 'social', label: 'Social Links' },
-  { id: 'business', label: 'Business Hours' }
+  { id: 'business', label: 'Business Hours' },
+  { id: 'products', label: 'Products' },
+  { id: 'galleries', label: 'Galleries' },
+  { id: 'testimonials', label: 'Testimonials' },
+  { id: 'iframes', label: 'Iframes' },
+  { id: 'instaembed', label: 'InstaEmbed' }
 ];
 
 const defaultFormData = {
@@ -72,7 +63,7 @@ const defaultFormData = {
   description: '',
   cover_type: 'color',
   cover_color: '#f3f4f6',
-  template_id: 'vcard1',
+  template_id: 'vcard01',
   profile_image: null,
   cover_image: null,
   favicon_image: null,
@@ -325,6 +316,13 @@ export default function VcardsEditScreen() {
   const [vcardId, setVcardId] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(defaultFormData);
+  const [extras, setExtras] = useState({ products: [], galleries: [], testimonials: [], iframes: [], instagram: [] });
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState(null);
+  const [modalData, setModalData] = useState({});
+  const [pendingProductImage, setPendingProductImage] = useState(null);
+  const [galleryImages, setGalleryImages] = useState({});
+  const [uploadingGallery, setUploadingGallery] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -400,6 +398,7 @@ export default function VcardsEditScreen() {
           
           setFormData(initialForm);
           setPreviewUrl(vcard.preview_url || '');
+          loadExtras(vId);
         }
       } else {
         Alert.alert('Error', 'No vCard found for your account.');
@@ -409,6 +408,174 @@ export default function VcardsEditScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadExtras = async (id) => {
+    try {
+      const [prodRes, galRes, testRes, iframeRes, instaRes] = await Promise.all([
+        fetchApi(`/api/products/list.php?vcard_id=${id}`),
+        fetchApi(`/api/galleries/list.php?vcard_id=${id}`),
+        fetchApi(`/api/testimonials/list.php?vcard_id=${id}`),
+        fetchApi(`/api/iframes/list.php?vcard_id=${id}`),
+        fetchApi(`/api/instagram/list.php?vcard_id=${id}`)
+      ]);
+      setExtras({
+        products: prodRes.data?.products || [],
+        galleries: galRes.data?.galleries || [],
+        testimonials: testRes.data?.testimonials || [],
+        iframes: iframeRes.data?.iframes || [],
+        instagram: instaRes.data?.feeds || []
+      });
+    } catch (e) {
+      console.warn("Failed to load extras", e);
+    }
+  };
+
+  const pickAndUploadImageFor = async (type, targetId, onDone) => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission Required', 'Allow gallery access to choose photos.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+
+      setSaving(true);
+      const fd = new FormData();
+      const filename = asset.uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename || '');
+      fd.append('file', {
+        uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+        name: filename,
+        type: match ? `image/${match[1]}` : 'image/jpeg',
+      });
+      fd.append('vcard_id', String(vcardId));
+      fd.append('type', type);
+      fd.append('target_id', String(targetId));
+
+      const res = await fetchApi('/api/uploads/image.php', { method: 'POST', body: fd });
+      if (res.success) {
+        if (onDone) onDone(res.url || res.path);
+      } else {
+        Alert.alert('Upload failed', res.message || 'Could not upload image.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to upload image.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const loadGalleryImages = async (galleryId) => {
+    try {
+      const res = await fetchApi(`/api/uploads/gallery-images.php?gallery_id=${galleryId}`);
+      setGalleryImages(prev => ({ ...prev, [galleryId]: res.data?.images || [] }));
+    } catch (e) {
+      setGalleryImages(prev => ({ ...prev, [galleryId]: [] }));
+    }
+  };
+
+  const deleteGalleryImage = async (imageId, galleryId) => {
+    Alert.alert('Delete Photo', 'Remove this photo from the gallery?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        const res = await fetchApi('/api/uploads/delete-image.php', {
+          method: 'POST',
+          body: JSON.stringify({ vcard_id: vcardId, type: 'gallery', image_id: imageId }),
+        });
+        if (res.success) loadGalleryImages(galleryId);
+      }},
+    ]);
+  };
+
+  const openModal = (type, data = null) => {
+    setModalType(type);
+    setModalData(data || {});
+    setPendingProductImage(null);
+    setModalVisible(true);
+  };
+
+  const saveExtraItem = async () => {
+    if (!vcardId) return;
+    setSaving(true);
+    let endpoint = '';
+    let payload = { vcard_id: vcardId, ...modalData };
+    
+    if (modalType === 'iframe') endpoint = '/api/iframes/save.php';
+    if (modalType === 'instaembed') endpoint = '/api/instagram/save.php';
+    if (modalType === 'gallery') endpoint = '/api/galleries/save.php';
+    if (modalType === 'testimonial') endpoint = '/api/testimonials/save.php';
+    if (modalType === 'product') endpoint = '/api/products/save.php';
+
+    try {
+      const response = await fetchApi(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (response.success) {
+        // If product and user picked a new image, upload it now using the product ID
+        if (modalType === 'product' && pendingProductImage) {
+          const productId = response.data?.id || modalData.id;
+          if (productId) {
+            const fd = new FormData();
+            const uri = pendingProductImage;
+            const filename = uri.split('/').pop();
+            const match = /\.(\w+)$/.exec(filename || '');
+            fd.append('file', {
+              uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+              name: filename,
+              type: match ? `image/${match[1]}` : 'image/jpeg',
+            });
+            fd.append('vcard_id', String(vcardId));
+            fd.append('type', 'product');
+            fd.append('target_id', String(productId));
+            await fetchApi('/api/uploads/image.php', { method: 'POST', body: fd });
+          }
+          setPendingProductImage(null);
+        }
+        setModalVisible(false);
+        loadExtras(vcardId);
+      } else {
+        Alert.alert('Error', response.message || 'Save failed');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteExtraItem = async (type, id) => {
+    Alert.alert('Confirm', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          let endpoint = '';
+          if (type === 'iframe') endpoint = '/api/iframes/delete.php';
+          if (type === 'instaembed') endpoint = '/api/instagram/delete.php';
+          if (type === 'gallery') endpoint = '/api/galleries/delete.php';
+          if (type === 'testimonial') endpoint = '/api/testimonials/delete.php';
+          if (type === 'product') endpoint = '/api/products/delete.php';
+          
+          try {
+            const response = await fetchApi(endpoint, {
+              method: 'POST',
+              body: JSON.stringify({ vcard_id: vcardId, id })
+            });
+            if (response.success) {
+              loadExtras(vcardId);
+            } else {
+              Alert.alert('Error', response.message);
+            }
+          } catch(e) {}
+      }}
+    ]);
   };
 
   const handlePickImage = async (type) => {
@@ -518,6 +685,8 @@ export default function VcardsEditScreen() {
         made_by_url: formData.made_by_url && formData.made_by_url.trim() !== '' ? formData.made_by_url.trim() : null,
         alternate_email: formData.alternate_email && formData.alternate_email.trim() !== '' ? formData.alternate_email.trim() : null,
         alternate_phone: formData.alternate_phone && formData.alternate_phone.trim() !== '' ? formData.alternate_phone.trim() : null,
+        cover_type: formData.cover_type || 'image',
+        cover_image: formData.cover_image && formData.cover_image.trim() !== '' ? formData.cover_image.trim() : null,
         social_links: socialLinksArray,
         business_hours: businessHoursArray
       };
@@ -685,28 +854,50 @@ export default function VcardsEditScreen() {
 
               {/* Cover Image Upload */}
               <View style={styles.uploadGroup}>
-                <Text style={styles.label}>Cover Image</Text>
-                <View style={styles.uploadRow}>
-                  <View style={styles.uploadPreviewContainer}>
-                    {formData.cover_image ? (
-                      <Image 
-                        source={{ uri: formData.cover_image.startsWith('http') ? formData.cover_image : `${API_BASE}/${formData.cover_image}` }} 
-                        style={styles.coverUploadPreview} 
-                      />
-                    ) : (
-                      <View style={[styles.coverUploadPreview, styles.emptyImagePreview]}>
-                        <Text style={styles.emptyImageText}>No Image</Text>
+                <Text style={styles.label}>Cover Media</Text>
+                
+                <SelectInput 
+                  label="Cover Type" 
+                  value={formData.cover_type || 'image'} 
+                  options={[
+                    { value: 'image', label: 'Image Upload' },
+                    { value: 'video', label: 'YouTube / Video URL' }
+                  ]}
+                  onChange={(val) => updateField('cover_type', val)}
+                />
+
+                {(!formData.cover_type || formData.cover_type === 'image') ? (
+                  <View>
+                    <View style={styles.uploadRow}>
+                      <View style={styles.uploadPreviewContainer}>
+                        {formData.cover_image && !formData.cover_image.includes('youtube') && !formData.cover_image.includes('youtu.be') ? (
+                          <Image 
+                            source={{ uri: formData.cover_image.startsWith('http') ? formData.cover_image : `${API_BASE}/${formData.cover_image}` }} 
+                            style={styles.coverUploadPreview} 
+                          />
+                        ) : (
+                          <View style={[styles.coverUploadPreview, styles.emptyImagePreview]}>
+                            <Text style={styles.emptyImageText}>No Image</Text>
+                          </View>
+                        )}
                       </View>
-                    )}
+                      <TouchableOpacity 
+                        style={styles.uploadBtn} 
+                        onPress={() => handlePickImage('cover')}
+                      >
+                        <Text style={styles.uploadBtnText}>Choose Photo</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.uploadHint}>Banner landscape image (PNG, JPG, WebP)</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.uploadBtn} 
-                    onPress={() => handlePickImage('cover')}
-                  >
-                    <Text style={styles.uploadBtnText}>Choose Photo</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.uploadHint}>Banner landscape image (PNG, JPG, WebP)</Text>
+                ) : (
+                  <TextInputField 
+                    label="YouTube or Video Link" 
+                    value={formData.cover_image} 
+                    onChangeText={(val) => updateField('cover_image', val)} 
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                )}
               </View>
 
               {/* Favicon Image Upload */}
@@ -874,13 +1065,20 @@ export default function VcardsEditScreen() {
           {activeTab === 'templates' && (
             <View>
               <Text style={styles.tabHeading}>Select vCard Template</Text>
+              <Text style={styles.tabSubheading}>Tap a card to select · tap Preview to see live</Text>
               <View style={styles.templatesGrid}>
                 {TEMPLATES.map(tpl => {
                   const isSelected = formData.template_id === tpl.id;
+                  const lineColor = tpl.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)';
+                  const avatarBg = `${tpl.primary}44`;
+                  const previewUrl = formData.url_alias
+                    ? `${API_BASE}/${formData.url_alias}?preview=${tpl.id}`
+                    : null;
                   return (
                     <TouchableOpacity
                       key={tpl.id}
                       style={[styles.templateCard, isSelected && styles.templateCardSelected]}
+                      activeOpacity={0.85}
                       onPress={() => {
                         setFormData(prev => ({
                           ...prev,
@@ -896,19 +1094,51 @@ export default function VcardsEditScreen() {
                         }));
                       }}
                     >
-                      <View style={[styles.templateThumb, { backgroundColor: isSelected ? COLORS.primary : 'rgba(21,62,63,0.05)' }]}>
-                        <Text style={[styles.templateThumbText, isSelected && { color: '#ffffff' }]}>
-                          {tpl.id.toUpperCase()}
-                        </Text>
+                      {/* Gradient cover strip */}
+                      <View style={[styles.tplCover, { backgroundColor: tpl.primary }]}>
+                        <View style={[styles.tplCoverAccent, { backgroundColor: tpl.secondary }]} />
+                        {isSelected && (
+                          <View style={styles.tplActiveBadge}>
+                            <Text style={styles.tplActiveBadgeText}>✓ ACTIVE</Text>
+                          </View>
+                        )}
                       </View>
-                      <Text style={[styles.templateName, isSelected && styles.templateNameSelected]} numberOfLines={1}>
-                        {tpl.name}
-                      </Text>
-                      {isSelected && (
-                        <View style={styles.selectedBadge}>
-                          <Text style={styles.selectedBadgeText}>ACTIVE</Text>
+
+                      {/* Simulated card body */}
+                      <View style={[styles.tplBody, { backgroundColor: tpl.bg }]}>
+                        {/* Avatar circle */}
+                        <View style={[styles.tplAvatar, { backgroundColor: tpl.primary, borderColor: tpl.bg }]} />
+                        {/* Name line */}
+                        <View style={[styles.tplLine, { width: '60%', backgroundColor: tpl.dark ? '#ffffff30' : '#00000018', marginBottom: 4 }]} />
+                        {/* Title line */}
+                        <View style={[styles.tplLine, { width: '40%', backgroundColor: tpl.primary + '55' }]} />
+                        {/* Action bars */}
+                        <View style={{ flexDirection: 'row', marginTop: 8, width: '100%' }}>
+                          {[0, 1, 2].map(i => (
+                            <View key={i} style={[styles.tplActionBar, { backgroundColor: tpl.primary + (i === 0 ? 'cc' : '44'), marginRight: i < 2 ? 4 : 0 }]} />
+                          ))}
                         </View>
-                      )}
+                      </View>
+
+                      {/* Footer: name + preview */}
+                      <View style={styles.tplFooter}>
+                        <Text style={[styles.templateName, isSelected && styles.templateNameSelected]} numberOfLines={1}>
+                          {tpl.name}
+                        </Text>
+                        <TouchableOpacity
+                          style={[styles.tplPreviewBtn, !previewUrl && styles.tplPreviewBtnDisabled]}
+                          onPress={() => {
+                            if (previewUrl) {
+                              Linking.openURL(previewUrl);
+                            } else {
+                              Alert.alert('Save First', 'Save the vCard first to preview this template.');
+                            }
+                          }}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Text style={[styles.tplPreviewBtnText, !previewUrl && { color: '#aaa' }]}>👁 Preview</Text>
+                        </TouchableOpacity>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -1298,6 +1528,222 @@ export default function VcardsEditScreen() {
             </View>
           )}
 
+          {/* TAB 8: PRODUCTS */}
+          {activeTab === 'products' && (
+            <View>
+              <Text style={styles.tabHeading}>Manage Products</Text>
+              {extras.products.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No products yet.</Text>
+              ) : (
+                extras.products.map(item => (
+                  <View key={item.id} style={[styles.listItemCard, { alignItems: 'flex-start', gap: 10 }]}>
+                    {/* Product thumbnail */}
+                    <TouchableOpacity
+                      onPress={() => pickAndUploadImageFor('product', item.id, () => loadExtras(vcardId))}
+                      style={{ width: 60, height: 60, borderRadius: 10, backgroundColor: COLORS.surface, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    >
+                      {item.image ? (
+                        <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : (
+                        <Text style={{ fontSize: 22 }}>📷</Text>
+                      )}
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listItemTitle}>{item.name}</Text>
+                      <Text style={styles.listItemSubtitle}>{item.currency} {item.price}</Text>
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Tap photo to change image</Text>
+                    </View>
+                    <View style={styles.listItemActions}>
+                      <TouchableOpacity onPress={() => openModal('product', item)} style={styles.actionBtn}><Text>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteExtraItem('product', item.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('product', {})}>
+                <Text style={styles.addBtnText}>+ Add Product</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* TAB 9: GALLERIES */}
+          {activeTab === 'galleries' && (
+            <View>
+              <Text style={styles.tabHeading}>Manage Galleries</Text>
+              {extras.galleries.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No galleries yet. Create one below.</Text>
+              ) : (
+                extras.galleries.map(item => {
+                  const imgs = galleryImages[item.id] || [];
+                  const isUploading = uploadingGallery[item.id];
+                  return (
+                    <View key={item.id} style={{ backgroundColor: COLORS.surface, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border }}>
+                      {/* Gallery header */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                        <Text style={{ flex: 1, fontWeight: '700', fontSize: 15, color: COLORS.text }}>{item.name}</Text>
+                        <TouchableOpacity onPress={() => openModal('gallery', item)} style={[styles.actionBtn, { marginRight: 4 }]}><Text>✏️</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={() => deleteExtraItem('gallery', item.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                      </View>
+
+                      {/* Load images if not yet loaded */}
+                      {!galleryImages[item.id] && (
+                        <TouchableOpacity onPress={() => loadGalleryImages(item.id)} style={{ alignItems: 'center', paddingVertical: 8 }}>
+                          <Text style={{ color: COLORS.primary, fontSize: 13 }}>👁  View / Manage Photos</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Image grid */}
+                      {galleryImages[item.id] && (
+                        <>
+                          {imgs.length === 0 ? (
+                            <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 8 }}>No photos yet.</Text>
+                          ) : (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                              {imgs.map(img => (
+                                <View key={img.id} style={{ position: 'relative' }}>
+                                  <Image
+                                    source={{ uri: img.public_url || img.image_url }}
+                                    style={{ width: 80, height: 80, borderRadius: 10 }}
+                                    resizeMode="cover"
+                                  />
+                                  <TouchableOpacity
+                                    onPress={() => deleteGalleryImage(img.id, item.id)}
+                                    style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' }}
+                                  >
+                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>×</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                          {/* Add Photo button */}
+                          <TouchableOpacity
+                            disabled={isUploading}
+                            onPress={async () => {
+                              const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                              if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose photos.'); return; }
+                              const res = await ImagePicker.launchImageLibraryAsync({
+                                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                allowsEditing: false,
+                                quality: 0.85,
+                                allowsMultipleSelection: true,
+                              });
+                              if (res.canceled || !res.assets?.length) return;
+
+                              setUploadingGallery(prev => ({ ...prev, [item.id]: true }));
+                              for (const asset of res.assets) {
+                                const fd = new FormData();
+                                const filename = asset.uri.split('/').pop();
+                                const match = /\.(\w+)$/.exec(filename || '');
+                                fd.append('file', {
+                                  uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+                                  name: filename,
+                                  type: match ? `image/${match[1]}` : 'image/jpeg',
+                                });
+                                fd.append('vcard_id', String(vcardId));
+                                fd.append('type', 'gallery');
+                                fd.append('target_id', String(item.id));
+                                await fetchApi('/api/uploads/image.php', { method: 'POST', body: fd });
+                              }
+                              setUploadingGallery(prev => ({ ...prev, [item.id]: false }));
+                              loadGalleryImages(item.id);
+                            }}
+                            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: COLORS.primary + '18', borderWidth: 1, borderColor: COLORS.primary + '40', borderStyle: 'dashed' }}
+                          >
+                            <Text style={{ fontSize: 16 }}>{isUploading ? '⏳' : '📷'}</Text>
+                            <Text style={{ fontSize: 13, color: COLORS.primary, fontWeight: '600' }}>
+                              {isUploading ? 'Uploading...' : '+ Add Photos from Gallery'}
+                            </Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('gallery', {})}>
+                <Text style={styles.addBtnText}>+ Create New Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* TAB 10: TESTIMONIALS */}
+          {activeTab === 'testimonials' && (
+            <View>
+              <Text style={styles.tabHeading}>Manage Testimonials</Text>
+              {extras.testimonials.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No testimonials yet.</Text>
+              ) : (
+                extras.testimonials.map(item => (
+                  <View key={item.id} style={styles.listItemCard}>
+                    <View style={styles.listItemInfo}>
+                      <Text style={styles.listItemTitle}>{item.name}</Text>
+                      <Text style={styles.listItemSubtitle}>{item.rating} Stars</Text>
+                    </View>
+                    <View style={styles.listItemActions}>
+                      <TouchableOpacity onPress={() => openModal('testimonial', item)} style={styles.actionBtn}><Text>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteExtraItem('testimonial', item.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('testimonial', {})}>
+                <Text style={styles.addBtnText}>+ Add Testimonial</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* TAB 11: IFRAMES */}
+          {activeTab === 'iframes' && (
+            <View>
+              <Text style={styles.tabHeading}>Manage Iframes</Text>
+              {extras.iframes.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No iframes yet.</Text>
+              ) : (
+                extras.iframes.map(item => (
+                  <View key={item.id} style={styles.listItemCard}>
+                    <View style={styles.listItemInfo}>
+                      <Text style={styles.listItemTitle} numberOfLines={1}>{item.url}</Text>
+                    </View>
+                    <View style={styles.listItemActions}>
+                      <TouchableOpacity onPress={() => openModal('iframe', item)} style={styles.actionBtn}><Text>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteExtraItem('iframe', item.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('iframe', {})}>
+                <Text style={styles.addBtnText}>+ Add Iframe</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* TAB 12: INSTAEMBED */}
+          {activeTab === 'instaembed' && (
+            <View>
+              <Text style={styles.tabHeading}>Manage Instagram Embeds</Text>
+              {extras.instagram.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No Instagram embeds yet.</Text>
+              ) : (
+                extras.instagram.map(item => (
+                  <View key={item.id} style={styles.listItemCard}>
+                    <View style={styles.listItemInfo}>
+                      <Text style={styles.listItemTitle}>{item.type}</Text>
+                      <Text style={styles.listItemSubtitle} numberOfLines={1}>{item.tag || item.embed_url}</Text>
+                    </View>
+                    <View style={styles.listItemActions}>
+                      <TouchableOpacity onPress={() => openModal('instaembed', item)} style={styles.actionBtn}><Text>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteExtraItem('instaembed', item.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('instaembed', {})}>
+                <Text style={styles.addBtnText}>+ Add Embed</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Save Button */}
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
             {saving ? (
@@ -1309,6 +1755,111 @@ export default function VcardsEditScreen() {
 
         </GlassCard>
       </ScrollView>
+
+      {/* EXTRAS MODAL */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{flex: 1}}>
+          <View style={styles.extrasModalOverlay}>
+            <View style={styles.modalCard}>
+            <View style={styles.dobModalHeader}>
+              <Text style={styles.dobModalTitle}>
+                {modalData.id ? 'Edit' : 'Add'} {modalType}
+              </Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Text style={styles.dobModalDone}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ padding: 16 }}>
+              {modalType === 'iframe' && (
+                <TextInputField 
+                  label="Iframe URL" 
+                  value={modalData.url || ''} 
+                  onChangeText={v => setModalData({...modalData, url: v})} 
+                />
+              )}
+              
+              {modalType === 'gallery' && (
+                <TextInputField 
+                  label="Gallery Name" 
+                  value={modalData.name || ''} 
+                  onChangeText={v => setModalData({...modalData, name: v})} 
+                />
+              )}
+
+              {modalType === 'instaembed' && (
+                <>
+                  <SelectInput 
+                    label="Type" 
+                    value={modalData.type || 'post'} 
+                    options={[{value:'post', label:'Post'}, {value:'reel', label:'Reel'}]}
+                    onChange={v => setModalData({...modalData, type: v})}
+                  />
+                  <TextInputField 
+                    label="Embed Tag (HTML or URL)" 
+                    value={modalData.tag || ''} 
+                    onChangeText={v => setModalData({...modalData, tag: v})} 
+                    multiline={true} height={100}
+                  />
+                </>
+              )}
+
+              {modalType === 'testimonial' && (
+                <>
+                  <TextInputField label="Name" value={modalData.name || ''} onChangeText={v => setModalData({...modalData, name: v})} />
+                  <TextInputField label="Designation" value={modalData.designation || ''} onChangeText={v => setModalData({...modalData, designation: v})} />
+                  <TextInputField label="Company" value={modalData.company || ''} onChangeText={v => setModalData({...modalData, company: v})} />
+                  <TextInputField label="Rating (1-5)" value={String(modalData.rating || '5')} onChangeText={v => setModalData({...modalData, rating: v})} />
+                  <TextInputField label="Message" value={modalData.message || ''} onChangeText={v => setModalData({...modalData, message: v})} multiline={true} height={80} />
+                </>
+              )}
+
+              {modalType === 'product' && (
+                <>
+                  {/* Product Image Picker */}
+                  <Text style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6 }}>Product Image</Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose a photo.'); return; }
+                      const res = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsEditing: true, aspect: [1, 1], quality: 0.8,
+                      });
+                      if (!res.canceled && res.assets?.length) setPendingProductImage(res.assets[0].uri);
+                    }}
+                    style={{ width: '100%', height: 140, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.surface, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}
+                  >
+                    {pendingProductImage || modalData.image ? (
+                      <Image
+                        source={{ uri: pendingProductImage || modalData.image }}
+                        style={{ width: '100%', height: '100%', borderRadius: 12 }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={{ alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 28 }}>📷</Text>
+                        <Text style={{ fontSize: 12, color: COLORS.textMuted }}>Tap to choose from gallery</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  <TextInputField label="Product Name *" value={modalData.name || ''} onChangeText={v => setModalData({...modalData, name: v})} />
+                  <TextInputField label="Price" value={String(modalData.price || '')} onChangeText={v => setModalData({...modalData, price: v})} keyboardType="numeric" />
+                  <TextInputField label="Currency (e.g. $, ₹, INR)" value={modalData.currency || ''} onChangeText={v => setModalData({...modalData, currency: v})} />
+                  <TextInputField label="Product URL" value={modalData.product_url || ''} onChangeText={v => setModalData({...modalData, product_url: v})} />
+                  <TextInputField label="Description" value={modalData.description || ''} onChangeText={v => setModalData({...modalData, description: v})} multiline={true} height={80} />
+                </>
+              )}
+
+              <TouchableOpacity style={styles.saveBtn} onPress={saveExtraItem} disabled={saving}>
+                {saving ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.saveBtnText}>Save</Text>}
+              </TouchableOpacity>
+              <View style={{height:40}} />
+            </ScrollView>
+          </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </View>
   );
 }
@@ -1546,66 +2097,117 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
     transform: [{ scale: 1.15 }],
   },
+  tabSubheading: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 14,
+    marginTop: -4,
+  },
   templatesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   templateCard: {
-    width: (width - 72) / 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(21, 62, 63, 0.1)',
-    borderRadius: 12,
-    padding: 8,
-    marginBottom: 12,
-    alignItems: 'center',
-    position: 'relative',
+    width: (width - 72 - 10) / 2,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(21,62,63,0.1)',
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   templateCardSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: '#ffffff',
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  templateThumb: {
+  tplCover: {
+    height: 36,
     width: '100%',
-    height: 90,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  templateThumbText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.primary,
+  tplCoverAccent: {
+    position: 'absolute',
+    right: -20,
+    top: -20,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    opacity: 0.5,
   },
-  templateName: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.text,
-  },
-  templateNameSelected: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  selectedBadge: {
+  tplActiveBadge: {
     position: 'absolute',
     top: 6,
-    right: 6,
-    backgroundColor: COLORS.accent,
+    left: 7,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  selectedBadgeText: {
-    color: '#ffffff',
+  tplActiveBadgeText: {
+    color: '#fff',
     fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  tplBody: {
+    padding: 8,
+    paddingTop: 0,
+    alignItems: 'center',
+    marginTop: -12,
+  },
+  tplAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    marginBottom: 5,
+  },
+  tplLine: {
+    height: 5,
+    borderRadius: 3,
+    alignSelf: 'center',
+  },
+  tplActionBar: {
+    flex: 1,
+    height: 14,
+    borderRadius: 4,
+  },
+  tplFooter: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  templateName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  templateNameSelected: {
+    color: COLORS.primary,
+  },
+  tplPreviewBtn: {
+    backgroundColor: COLORS.primary + '15',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  tplPreviewBtnDisabled: {
+    backgroundColor: 'rgba(0,0,0,0.04)',
+  },
+  tplPreviewBtnText: {
+    fontSize: 10,
     fontWeight: '700',
+    color: COLORS.primary,
   },
   businessDayCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
@@ -1759,6 +2361,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
+  extrasModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
   dobModalContent: {
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 20,
@@ -1784,4 +2392,59 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
+  listItemCard: {
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(21,62,63,0.1)',
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  listItemInfo: {
+    flex: 1
+  },
+  listItemTitle: {
+    fontWeight: '600',
+    color: COLORS.primary,
+    fontSize: 14,
+    marginBottom: 2
+  },
+  listItemSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 12
+  },
+  listItemActions: {
+    flexDirection: 'row'
+  },
+  actionBtn: {
+    padding: 8,
+    marginLeft: 8,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: 6
+  },
+  addBtn: {
+    backgroundColor: 'rgba(131,56,236,0.1)',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(131,56,236,0.3)',
+    marginTop: 10
+  },
+  addBtnText: {
+    color: COLORS.accent,
+    fontWeight: '700',
+    fontSize: 14
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    alignSelf: 'center',
+  }
 });

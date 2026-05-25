@@ -212,7 +212,12 @@ export default function DesignCustomizeScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
+        {/* --- BACK BUTTON --- */}
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigate('my-designs')} activeOpacity={0.7}>
+          <Text style={styles.backBtnText}>← Back</Text>
+        </TouchableOpacity>
+
         {/* --- LIVE PREVIEW CANVAS --- */}
         <View style={styles.previewContainer}>
           <ViewShot ref={viewRef} options={{ format: 'jpg', quality: 1.0 }} style={styles.imageWrapper}>
@@ -478,6 +483,17 @@ export default function DesignCustomizeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { padding: 16 },
+  backBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 12,
+  },
+  backBtnText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   btn: { marginTop: 20, padding: 10, backgroundColor: COLORS.primary, borderRadius: 8 },
   btnText: { color: '#fff', fontWeight: 'bold' },

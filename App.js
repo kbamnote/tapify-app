@@ -2,9 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Image, Animated, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 import { COLORS } from './src/theme/colors';
+import {
+  registerForPushNotificationsAsync,
+  sendTokenToBackend,
+  setupNotificationListeners,
+} from './src/services/NotificationService';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -65,7 +71,8 @@ function ScreenRenderer() {
 }
 
 function MainLayout() {
-  const { currentScreen, user } = useNavigation();
+  // BUG FIX: Added `navigate` to destructure — was missing, caused ReferenceError in navRef below
+  const { currentScreen, user, navigate } = useNavigation();
 
   if (currentScreen === 'login' || !user) {
     return <LoginScreen />;
@@ -90,23 +97,26 @@ function MainLayout() {
   };
 
   useEffect(() => {
-    if (user) {
-      import('./src/services/NotificationService').then(service => {
-        service.registerForPushNotificationsAsync().then(token => {
-          if (token) service.sendTokenToBackend(token);
-        });
-        
-        const navRef = { current: { navigate: (screen) => navigate(screen) } };
-        const listeners = service.setupNotificationListeners(navRef);
-        
-        return () => {
-          import('expo-notifications').then(Notifications => {
-            Notifications.removeNotificationSubscription(listeners.notificationListener);
-            Notifications.removeNotificationSubscription(listeners.responseListener);
-          });
-        };
-      });
-    }
+    if (!user) return;
+
+    // BUG FIX 1: Replaced dynamic import() with static imports at top of file.
+    // BUG FIX 2: Cleanup now returns directly from useEffect so React actually calls it.
+    // BUG FIX 3: navigate is now in scope (destructured above).
+
+    // Register and save the Expo push token to backend
+    registerForPushNotificationsAsync().then(token => {
+      if (token) sendTokenToBackend(token);
+    });
+
+    // Wire notification tap → in-app navigation
+    const navRef = { current: { navigate: (screen) => navigate(screen) } };
+    const { notificationListener, responseListener } = setupNotificationListeners(navRef);
+
+    // Proper cleanup: returned directly from useEffect so React calls it on unmount/user change
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
   }, [user]);
 
   return (

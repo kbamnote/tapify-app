@@ -1,8 +1,7 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { API_BASE } from '../config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchApi } from '../config'; // Uses session-cookie auth, same as the rest of the app
 
 // Ensure notifications show up when app is in foreground
 Notifications.setNotificationHandler({
@@ -28,44 +27,42 @@ export async function registerForPushNotificationsAsync() {
   if (Device.isDevice) {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
-    
+
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-    
+
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      console.log('Push notification permission denied.');
       return null;
     }
-    
+
+    // projectId must match extra.eas.projectId in app.json
     token = (await Notifications.getExpoPushTokenAsync({
-      projectId: 'c8ffb44e-62c6-434b-8109-ec5c66568151' // from app.json
+      projectId: 'c8ffb44e-62c6-434b-8109-ec5c66568151',
     })).data;
-    
+
+    console.log('Expo Push Token:', token);
   } else {
-    console.log('Must use physical device for Push Notifications');
+    console.log('Push notifications require a physical device.');
   }
 
   return token;
 }
 
+// BUG FIX: Was using AsyncStorage.getItem('userToken') which is never set in this app.
+// The app authenticates via PHP session cookies — use fetchApi which sends credentials: 'include'.
 export async function sendTokenToBackend(token) {
   if (!token) return;
   try {
-    const sessionToken = await AsyncStorage.getItem('userToken');
-    if (!sessionToken) return;
-
-    await fetch(`${API_BASE}/api/notifications/update-token.php`, {
+    await fetchApi('/api/notifications/update-token.php', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionToken}`
-      },
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ token }),
     });
+    console.log('Push token saved to backend successfully.');
   } catch (e) {
-    console.log('Error saving token to backend', e);
+    console.log('Error saving push token to backend:', e);
   }
 }
 

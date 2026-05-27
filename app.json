@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Tapify",
-    "slug": "tapif-app",
+    "slug": "tapify",
     "version": "1.1.5",
     "scheme": "tapifapp",
     "orientation": "portrait",
@@ -25,7 +25,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "c8ffb44e-62c6-434b-8109-ec5c66568151"
+        "projectId": "da1e4675-9f10-4b35-944c-6e4d8067e62d"
       }
     },
     "plugins": [

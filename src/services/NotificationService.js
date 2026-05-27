@@ -40,7 +40,7 @@ export async function registerForPushNotificationsAsync() {
 
     // projectId must match extra.eas.projectId in app.json
     token = (await Notifications.getExpoPushTokenAsync({
-      projectId: 'c8ffb44e-62c6-434b-8109-ec5c66568151',
+      projectId: Constants.expoConfig.extra.eas.projectId,
     })).data;
 
     console.log('Expo Push Token:', token);

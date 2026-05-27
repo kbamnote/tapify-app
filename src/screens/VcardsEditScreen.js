@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ScrollView, TextInput, TouchableOpacity, Switch, ActivityIndicator, Alert, Dimensions, Linking, Image, Platform, Modal, Keyboard, KeyboardAvoidingView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi, API_BASE } from '../config';
 import * as ImagePicker from 'expo-image-picker';
+import QRCode from 'react-native-qrcode-svg';
+import ViewShot from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
 
 const { width } = Dimensions.get('window');
 
@@ -53,8 +56,40 @@ const TABS = [
   { id: 'galleries', label: 'Galleries' },
   { id: 'testimonials', label: 'Testimonials' },
   { id: 'iframes', label: 'Iframes' },
-  { id: 'instaembed', label: 'InstaEmbed' }
+  { id: 'instaembed', label: 'InstaEmbed' },
+  { id: 'dynamic_qr', label: 'Dynamic QR' }
 ];
+
+const TEMPLATE_IMAGES = {
+  'vcard01': require('../../assets/template_01.png'),
+  'vcard02': require('../../assets/template_02.png'),
+  'vcard03': require('../../assets/template_03.png'),
+  'vcard04': require('../../assets/template_04.png'),
+  'vcard05': require('../../assets/template_05.png'),
+  'vcard06': require('../../assets/template_06.png'),
+  'vcard07': require('../../assets/template_07.png'),
+  'vcard08': require('../../assets/template_08.png'),
+  'vcard09': require('../../assets/template_09.png'),
+  'vcard10': require('../../assets/template_10.png'),
+  'vcard11': require('../../assets/template_11.png'),
+  'vcard12': require('../../assets/template_12.png'),
+  'vcard13': require('../../assets/template_13.png'),
+  'vcard14': require('../../assets/template_14.png'),
+  'vcard15': require('../../assets/template_15.png'),
+  'vcard16': require('../../assets/template_16.png'),
+  'vcard17': require('../../assets/template_17.png'),
+  'vcard18': require('../../assets/template_18.png'),
+  'vcard19': require('../../assets/template_19.png'),
+  'vcard20': require('../../assets/template_20.png'),
+  'vcard21': require('../../assets/template_21.png'),
+  'vcard22': require('../../assets/template_22.png'),
+  'vcard23': require('../../assets/template_23.png'),
+  'vcard24': require('../../assets/template_24.png'),
+  'vcard25': require('../../assets/template_25.png'),
+  'vcard26': require('../../assets/template_26.png'),
+  'vcard27': require('../../assets/template_27.png'),
+  'vcard28': require('../../assets/template_28.png'),
+};
 
 const defaultFormData = {
   url_alias: '',
@@ -316,7 +351,7 @@ export default function VcardsEditScreen() {
   const [vcardId, setVcardId] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(defaultFormData);
-  const [extras, setExtras] = useState({ products: [], galleries: [], testimonials: [], iframes: [], instagram: [] });
+  const [extras, setExtras] = useState({ products: [], galleries: [], testimonials: [], iframes: [], instagram: [], dynamicQRs: [] });
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState(null);
   const [modalData, setModalData] = useState({});
@@ -327,6 +362,24 @@ export default function VcardsEditScreen() {
   const [saving, setSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const qrViewRef = useRef(null);
+
+  const downloadQR = async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Allow gallery access to save QR code.');
+        return;
+      }
+      if (qrViewRef.current) {
+        const uri = await qrViewRef.current.capture();
+        await MediaLibrary.saveToLibraryAsync(uri);
+        Alert.alert('Success', 'QR Code saved to gallery!');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save QR code.');
+    }
+  };
 
   useEffect(() => {
     loadVcard();
@@ -412,19 +465,21 @@ export default function VcardsEditScreen() {
 
   const loadExtras = async (id) => {
     try {
-      const [prodRes, galRes, testRes, iframeRes, instaRes] = await Promise.all([
+      const [prodRes, galRes, testRes, iframeRes, instaRes, qrRes] = await Promise.all([
         fetchApi(`/api/products/list.php?vcard_id=${id}`),
         fetchApi(`/api/galleries/list.php?vcard_id=${id}`),
         fetchApi(`/api/testimonials/list.php?vcard_id=${id}`),
         fetchApi(`/api/iframes/list.php?vcard_id=${id}`),
-        fetchApi(`/api/instagram/list.php?vcard_id=${id}`)
+        fetchApi(`/api/instagram/list.php?vcard_id=${id}`),
+        fetchApi(`/api/dynamic-qr/list.php`)
       ]);
       setExtras({
         products: prodRes.data?.products || [],
         galleries: galRes.data?.galleries || [],
         testimonials: testRes.data?.testimonials || [],
         iframes: iframeRes.data?.iframes || [],
-        instagram: instaRes.data?.feeds || []
+        instagram: instaRes.data?.feeds || [],
+        dynamicQRs: qrRes.data || []
       });
     } catch (e) {
       console.warn("Failed to load extras", e);
@@ -513,6 +568,7 @@ export default function VcardsEditScreen() {
     if (modalType === 'gallery') endpoint = '/api/galleries/save.php';
     if (modalType === 'testimonial') endpoint = '/api/testimonials/save.php';
     if (modalType === 'product') endpoint = '/api/products/save.php';
+    if (modalType === 'dynamic_qr') endpoint = '/api/dynamic-qr/save.php';
 
     try {
       const response = await fetchApi(endpoint, {
@@ -562,6 +618,7 @@ export default function VcardsEditScreen() {
           if (type === 'gallery') endpoint = '/api/galleries/delete.php';
           if (type === 'testimonial') endpoint = '/api/testimonials/delete.php';
           if (type === 'product') endpoint = '/api/products/delete.php';
+          if (type === 'dynamic_qr') endpoint = '/api/dynamic-qr/delete.php';
           
           try {
             const response = await fetchApi(endpoint, {
@@ -1065,19 +1122,37 @@ export default function VcardsEditScreen() {
           {activeTab === 'templates' && (
             <View>
               <Text style={styles.tabHeading}>Select vCard Template</Text>
-              <Text style={styles.tabSubheading}>Tap a card to select · tap Preview to see live</Text>
-              <View style={styles.templatesGrid}>
+              <Text style={styles.tabSubheading}>Swipe and tap to select a template design</Text>
+              
+              {/* Mobile Phone Mockup Preview */}
+              <View style={styles.mobileMockupContainer}>
+                <View style={styles.mobileMockupFrame}>
+                  {/* Notch / Speaker */}
+                  <View style={styles.mobileNotch} />
+                  
+                  {/* Template Image */}
+                  <ScrollView style={styles.mobileScreen} showsVerticalScrollIndicator={false}>
+                    <Image 
+                      source={TEMPLATE_IMAGES[formData.template_id] || TEMPLATE_IMAGES['vcard01']} 
+                      style={styles.mobileScreenImage} 
+                      resizeMode="cover" 
+                    />
+                  </ScrollView>
+                </View>
+              </View>
+
+              {/* Carousel of templates */}
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={styles.templatesCarousel}
+              >
                 {TEMPLATES.map(tpl => {
                   const isSelected = formData.template_id === tpl.id;
-                  const lineColor = tpl.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)';
-                  const avatarBg = `${tpl.primary}44`;
-                  const previewUrl = formData.url_alias
-                    ? `${API_BASE}/${formData.url_alias}?preview=${tpl.id}`
-                    : null;
                   return (
                     <TouchableOpacity
                       key={tpl.id}
-                      style={[styles.templateCard, isSelected && styles.templateCardSelected]}
+                      style={[styles.carouselItem, isSelected && styles.carouselItemSelected, { borderColor: isSelected ? COLORS.primary : 'transparent' }]}
                       activeOpacity={0.85}
                       onPress={() => {
                         setFormData(prev => ({
@@ -1094,55 +1169,23 @@ export default function VcardsEditScreen() {
                         }));
                       }}
                     >
-                      {/* Gradient cover strip */}
-                      <View style={[styles.tplCover, { backgroundColor: tpl.primary }]}>
-                        <View style={[styles.tplCoverAccent, { backgroundColor: tpl.secondary }]} />
-                        {isSelected && (
-                          <View style={styles.tplActiveBadge}>
-                            <Text style={styles.tplActiveBadgeText}>✓ ACTIVE</Text>
-                          </View>
-                        )}
-                      </View>
-
-                      {/* Simulated card body */}
-                      <View style={[styles.tplBody, { backgroundColor: tpl.bg }]}>
-                        {/* Avatar circle */}
-                        <View style={[styles.tplAvatar, { backgroundColor: tpl.primary, borderColor: tpl.bg }]} />
-                        {/* Name line */}
-                        <View style={[styles.tplLine, { width: '60%', backgroundColor: tpl.dark ? '#ffffff30' : '#00000018', marginBottom: 4 }]} />
-                        {/* Title line */}
-                        <View style={[styles.tplLine, { width: '40%', backgroundColor: tpl.primary + '55' }]} />
-                        {/* Action bars */}
-                        <View style={{ flexDirection: 'row', marginTop: 8, width: '100%' }}>
-                          {[0, 1, 2].map(i => (
-                            <View key={i} style={[styles.tplActionBar, { backgroundColor: tpl.primary + (i === 0 ? 'cc' : '44'), marginRight: i < 2 ? 4 : 0 }]} />
-                          ))}
+                      <Image 
+                        source={TEMPLATE_IMAGES[tpl.id]} 
+                        style={styles.carouselImage} 
+                        resizeMode="cover" 
+                      />
+                      {isSelected && (
+                        <View style={styles.carouselActiveBadge}>
+                          <Text style={styles.carouselActiveText}>✓</Text>
                         </View>
-                      </View>
-
-                      {/* Footer: name + preview */}
-                      <View style={styles.tplFooter}>
-                        <Text style={[styles.templateName, isSelected && styles.templateNameSelected]} numberOfLines={1}>
-                          {tpl.name}
-                        </Text>
-                        <TouchableOpacity
-                          style={[styles.tplPreviewBtn, !previewUrl && styles.tplPreviewBtnDisabled]}
-                          onPress={() => {
-                            if (previewUrl) {
-                              Linking.openURL(previewUrl);
-                            } else {
-                              Alert.alert('Save First', 'Save the vCard first to preview this template.');
-                            }
-                          }}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        >
-                          <Text style={[styles.tplPreviewBtnText, !previewUrl && { color: '#aaa' }]}>👁 Preview</Text>
-                        </TouchableOpacity>
-                      </View>
+                      )}
+                      <Text style={[styles.carouselName, isSelected && styles.carouselNameSelected]} numberOfLines={1}>
+                        {tpl.name}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
-              </View>
+              </ScrollView>
             </View>
           )}
 
@@ -1744,6 +1787,41 @@ export default function VcardsEditScreen() {
             </View>
           )}
 
+          {/* TAB 13: DYNAMIC QR */}
+          {activeTab === 'dynamic_qr' && (
+            <View>
+              <Text style={styles.tabHeading}>Manage Dynamic QRs</Text>
+              <Text style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 15, textAlign: 'center' }}>
+                Create smart QR codes whose destination links can be changed anytime.
+              </Text>
+              {!extras.dynamicQRs || extras.dynamicQRs.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No dynamic QRs yet.</Text>
+              ) : (
+                extras.dynamicQRs.map(item => (
+                  <View key={item.id} style={styles.listItemCard}>
+                    <View style={styles.listItemInfo}>
+                      <Text style={styles.listItemTitle}>{item.name}</Text>
+                      <Text style={styles.listItemSubtitle}>tapify.com/qr/{item.short_url}</Text>
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                         <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Scans: {item.total_scans || 0}</Text>
+                         <Text style={{ fontSize: 12, color: item.status == 1 ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>
+                           {item.status == 1 ? 'Active' : 'Inactive'}
+                         </Text>
+                      </View>
+                    </View>
+                    <View style={styles.listItemActions}>
+                      <TouchableOpacity onPress={() => openModal('dynamic_qr', item)} style={styles.actionBtn}><Text>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteExtraItem('dynamic_qr', item.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('dynamic_qr', { qr_type: 'website', status: 1 })}>
+                <Text style={styles.addBtnText}>+ Create Dynamic QR</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Save Button */}
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
             {saving ? (
@@ -1811,6 +1889,76 @@ export default function VcardsEditScreen() {
                   <TextInputField label="Rating (1-5)" value={String(modalData.rating || '5')} onChangeText={v => setModalData({...modalData, rating: v})} />
                   <TextInputField label="Message" value={modalData.message || ''} onChangeText={v => setModalData({...modalData, message: v})} multiline={true} height={80} />
                 </>
+              )}
+
+              {modalType === 'dynamic_qr' && (
+                <>
+                  <TextInputField 
+                    label="QR Name" 
+                    value={modalData.name || ''} 
+                    onChangeText={v => setModalData({...modalData, name: v})} 
+                    placeholder="e.g. My Campaign QR"
+                  />
+                  <TextInputField 
+                    label="Destination URL" 
+                    value={modalData.destination_url || ''} 
+                    onChangeText={v => setModalData({...modalData, destination_url: v})} 
+                    placeholder="https://google.com"
+                  />
+                  <SelectInput 
+                    label="QR Type" 
+                    value={modalData.qr_type || 'website'} 
+                    onChange={v => setModalData({...modalData, qr_type: v})} 
+                    options={[
+                      { label: 'Website', value: 'website' },
+                      { label: 'WhatsApp', value: 'whatsapp' },
+                      { label: 'PDF', value: 'pdf' },
+                      { label: 'Social Media', value: 'social' },
+                    ]}
+                  />
+                  <SwitchInputField 
+                    label="Active Status" 
+                    value={modalData.status == 1} 
+                    onValueChange={v => setModalData({...modalData, status: v ? 1 : 0})} 
+                  />
+                  <ColorInput 
+                    label="Custom QR Color" 
+                    value={modalData.custom_color || '#000000'} 
+                    onChange={v => setModalData({...modalData, custom_color: v})} 
+                  />
+                  {modalData.short_url && (
+                    <View style={{ alignItems: 'center', marginTop: 20, padding: 15, backgroundColor: '#f9f9f9', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                      <Text style={{ fontWeight: 'bold', marginBottom: 15, color: COLORS.primary }}>Live QR Preview</Text>
+                      
+                      <ViewShot ref={qrViewRef} options={{ format: 'jpg', quality: 1.0 }} style={{ backgroundColor: '#ffffff', padding: 20, alignItems: 'center', borderRadius: 12 }}>
+                        <QRCode
+                          value={`https://tapify-backend-production.up.railway.app/qr/${modalData.short_url}`}
+                          size={150}
+                          color={modalData.custom_color || '#000000'}
+                        />
+                        <Text style={{ marginTop: 15, fontSize: 16, color: '#000000', fontWeight: 'bold' }}>
+                          {modalData.name || 'Scan Me'}
+                        </Text>
+                      </ViewShot>
+                      
+                      <TouchableOpacity 
+                        style={{ marginTop: 15, backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
+                        onPress={downloadQR}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>⬇️ Download QR</Text>
+                      </TouchableOpacity>
+                      <Text style={{ marginTop: 15, fontSize: 13, color: COLORS.textMuted, fontWeight: '500' }}>tapify.com/qr/{modalData.short_url}</Text>
+                    </View>
+                  )}
+                </>
+              )}
+
+              {modalType === 'gallery' && (
+                <TextInputField 
+                  label="Gallery Name" 
+                  value={modalData.name || ''} 
+                  onChangeText={v => setModalData({...modalData, name: v})} 
+                />
               )}
 
               {modalType === 'product' && (
@@ -2446,5 +2594,93 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     alignSelf: 'center',
+  },
+  mobileMockupContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  mobileMockupFrame: {
+    width: 210,
+    height: 420,
+    backgroundColor: '#fff',
+    borderRadius: 30,
+    borderWidth: 8,
+    borderColor: '#111',
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  mobileNotch: {
+    position: 'absolute',
+    top: 0,
+    alignSelf: 'center',
+    width: 80,
+    height: 20,
+    backgroundColor: '#111',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    zIndex: 10,
+  },
+  mobileScreen: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  mobileScreenImage: {
+    width: '100%',
+    height: 1200, 
+  },
+  templatesCarousel: {
+    paddingVertical: 15,
+    paddingHorizontal: 5,
+  },
+  carouselItem: {
+    width: 100,
+    marginRight: 15,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderRadius: 12,
+    padding: 6,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+  carouselItemSelected: {
+    backgroundColor: 'rgba(131,56,236,0.08)',
+  },
+  carouselImage: {
+    width: '100%',
+    height: 140,
+    borderRadius: 8,
+  },
+  carouselActiveBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: COLORS.primary,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  carouselActiveText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  carouselName: {
+    fontSize: 11,
+    marginTop: 8,
+    textAlign: 'center',
+    color: COLORS.textMuted,
+  },
+  carouselNameSelected: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
   }
 });

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "17546919046",
+    "project_id": "tapify-fa603",
+    "storage_bucket": "tapify-fa603.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:17546919046:android:52aac5b8999fa43cfaa507",
+        "android_client_info": {
+          "package_name": "com.kbamnote.tapifapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCg29jdIrGDNW5DJ1xoYmlIvP9B1lUr3Xw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

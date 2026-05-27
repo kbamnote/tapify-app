@@ -19,6 +19,7 @@ import WhatsappOrdersScreen from './src/screens/WhatsappOrdersScreen';
 import MyDesignsScreen from './src/screens/MyDesignsScreen';
 import DesignCustomizeScreen from './src/screens/DesignCustomizeScreen';
 import ReviewsScreen from './src/screens/ReviewsScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
 
 // Components
 import Header from './src/components/Header';
@@ -56,6 +57,8 @@ function ScreenRenderer() {
       return <DesignCustomizeScreen />;
     case 'reviews-funnel':
       return <ReviewsScreen />;
+    case 'notifications':
+      return <NotificationsScreen />;
     default:
       return <DashboardScreen />;
   }
@@ -81,9 +84,30 @@ function MainLayout() {
       case 'my-designs': return 'My Designs';
       case 'design-customize': return 'Customize Design';
       case 'reviews-funnel': return 'Reviews Funnel';
+      case 'notifications': return 'Notification Center';
       default: return 'Tapify';
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      import('./src/services/NotificationService').then(service => {
+        service.registerForPushNotificationsAsync().then(token => {
+          if (token) service.sendTokenToBackend(token);
+        });
+        
+        const navRef = { current: { navigate: (screen) => navigate(screen) } };
+        const listeners = service.setupNotificationListeners(navRef);
+        
+        return () => {
+          import('expo-notifications').then(Notifications => {
+            Notifications.removeNotificationSubscription(listeners.notificationListener);
+            Notifications.removeNotificationSubscription(listeners.responseListener);
+          });
+        };
+      });
+    }
+  }, [user]);
 
   return (
     <SafeAreaView style={styles.container}>

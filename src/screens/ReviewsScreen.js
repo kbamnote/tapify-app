@@ -144,6 +144,24 @@ export default function ReviewsScreen() {
                 <Text style={styles.reviewDate}>{new Date(r.created_at).toLocaleDateString()}</Text>
                 <Text style={styles.reviewStars}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Text>
               </View>
+
+              <View style={styles.reviewInfoRow}>
+                <View style={styles.reviewInfoItem}>
+                  <Text style={styles.reviewInfoLabel}>👤 Name</Text>
+                  <Text style={styles.reviewInfoValue}>{r.customer_name || '—'}</Text>
+                </View>
+                <View style={styles.reviewInfoItem}>
+                  <Text style={styles.reviewInfoLabel}>📞 Phone</Text>
+                  {r.customer_phone ? (
+                    <TouchableOpacity onPress={() => Linking.openURL(`tel:${r.customer_phone}`)}>
+                      <Text style={styles.phoneLink}>{r.customer_phone}</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.reviewInfoValue}>—</Text>
+                  )}
+                </View>
+              </View>
+
               <Text style={styles.reviewText}>{r.feedback_text || 'No text provided'}</Text>
               {r.media_url ? (
                 <TouchableOpacity onPress={() => Linking.openURL(r.media_url)}>
@@ -310,5 +328,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.primary,
     fontWeight: '500',
+  },
+  reviewInfoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 10,
+  },
+  reviewInfoItem: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  reviewInfoLabel: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginBottom: 3,
+  },
+  reviewInfoValue: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  phoneLink: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });

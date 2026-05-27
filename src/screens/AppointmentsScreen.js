@@ -147,6 +147,20 @@ export default function AppointmentsScreen() {
     });
   };
 
+  const copyDayToAll = (sourceDay) => {
+    const sourceSlots = weeklyData[sourceDay];
+    if (!sourceSlots || sourceSlots.length === 0) return;
+    setWeeklyData(prev => {
+      const updated = { ...prev };
+      order.forEach(day => {
+        if (day !== sourceDay) {
+          updated[day] = sourceSlots.map(s => ({ ...s }));
+        }
+      });
+      return updated;
+    });
+  };
+
 
 
   const loadAppointments = async () => {
@@ -319,10 +333,27 @@ export default function AppointmentsScreen() {
                       )}
                     </View>
                     
-                    <View style={{ width: 40, alignItems: 'flex-end' }}>
+                    <View style={{ width: 56, alignItems: 'flex-end', gap: 4 }}>
                       <TouchableOpacity onPress={() => addDaySlot(day)} style={{ padding: 5 }}>
                         <Text style={{ color: COLORS.primary, fontSize: 18, fontWeight: 'bold' }}>+</Text>
                       </TouchableOpacity>
+                      {isChecked && (
+                        <TouchableOpacity
+                          onPress={() =>
+                            Alert.alert(
+                              'Copy to All Days',
+                              `Copy ${dayNames[day]}'s schedule to all other days?`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Copy', onPress: () => copyDayToAll(day) },
+                              ]
+                            )
+                          }
+                          style={styles.copyBtn}
+                        >
+                          <Text style={styles.copyBtnText}>⧉</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );
@@ -457,6 +488,18 @@ const styles = StyleSheet.create({
   },
   slotsList: {
     maxHeight: 250,
+  },
+  copyBtn: {
+    backgroundColor: COLORS.primary + '15',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    alignItems: 'center',
+  },
+  copyBtnText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   slotRow: {
     flexDirection: 'row',

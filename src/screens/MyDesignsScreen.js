@@ -20,10 +20,10 @@ import { useNavigation } from '../context/NavigationContext';
 import { API_BASE } from '../config';
 
 export default function MyDesignsScreen() {
-  const { navigate } = useNavigation();
-  const [activeTab, setActiveTab] = useState('home'); // 'home', 'categories', 'saved'
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedGlobalCategory, setSelectedGlobalCategory] = useState(null);
+  const { navigate, params } = useNavigation();
+  const [activeTab, setActiveTab] = useState(params?.returnToTab || 'home'); 
+  const [selectedCategory, setSelectedCategory] = useState(params?.returnToCategory || null);
+  const [selectedGlobalCategory, setSelectedGlobalCategory] = useState(params?.returnToGlobalCategory || null);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -183,7 +183,15 @@ export default function MyDesignsScreen() {
     const isSaved = savedIds.includes(Number(design.id));
     return (
       <View key={design.id} style={styles.cardContainer}>
-        <TouchableOpacity activeOpacity={0.9} onPress={() => navigate('design-customize', { design })}>
+        <TouchableOpacity 
+          activeOpacity={0.9} 
+          onPress={() => navigate('design-customize', { 
+            design,
+            returnToTab: activeTab,
+            returnToCategory: selectedCategory,
+            returnToGlobalCategory: selectedGlobalCategory
+          })}
+        >
           <GlassCard style={styles.card}>
             <Image source={{ uri: design.image_url }} style={styles.cardImage} />
             <View style={styles.cardBody}>
@@ -269,6 +277,28 @@ export default function MyDesignsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Fixed Search Bar */}
+      {((activeTab === 'home' && selectedCategory === null) || 
+        (activeTab === 'categories' && selectedGlobalCategory === null)) && (
+        <View style={[styles.searchBar, { marginHorizontal: 16, marginTop: 16, marginBottom: 0 }]}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search categories..."
+            placeholderTextColor={COLORS.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.searchClear}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* Scrollable Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -279,25 +309,6 @@ export default function MyDesignsScreen() {
         {activeTab === 'home' && selectedCategory === null && (
           <View style={styles.gridContainer}>
             <Text style={styles.gridHeaderTitle}>Choose a Category</Text>
-
-            {/* Search bar */}
-            <View style={styles.searchBar}>
-              <Text style={styles.searchIcon}>🔍</Text>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search categories..."
-                placeholderTextColor={COLORS.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                returnKeyType="search"
-                clearButtonMode="while-editing"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={styles.searchClear}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
 
             {(() => {
               const q = searchQuery.trim().toLowerCase();
@@ -341,25 +352,6 @@ export default function MyDesignsScreen() {
         {activeTab === 'categories' && selectedGlobalCategory === null && (
           <View style={styles.gridContainer}>
             <Text style={styles.gridHeaderTitle}>Browse Categories</Text>
-
-            {/* Search bar */}
-            <View style={styles.searchBar}>
-              <Text style={styles.searchIcon}>🔍</Text>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search categories..."
-                placeholderTextColor={COLORS.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                returnKeyType="search"
-                clearButtonMode="while-editing"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={styles.searchClear}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
 
             {(() => {
               const q = searchQuery.trim().toLowerCase();

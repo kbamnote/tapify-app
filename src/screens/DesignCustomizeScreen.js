@@ -10,8 +10,14 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Keyboard
+  Keyboard,
+  PanResponder,
+  Animated,
+  Share,
+  Switch,
+  Alert
 } from 'react-native';
+import { fetchApi } from '../config';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,41 +28,58 @@ import * as MediaLibrary from 'expo-media-library';
 const { width } = Dimensions.get('window');
 const IMAGE_SIZE = width - 32;
 
-// Reusable D-Pad Control Component
-const DPadControl = ({ onMove }) => {
+const DraggableElement = ({ x, y, onDragStart, onDragEnd, onPress, children, disabled }) => {
+  const pan = useRef(new Animated.ValueXY({ x, y })).current;
+
+  useEffect(() => {
+    pan.setValue({ x, y });
+  }, [x, y]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !disabled,
+      onMoveShouldSetPanResponder: () => !disabled,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        pan.setOffset({ x: pan.x._value, y: pan.y._value });
+        pan.setValue({ x: 0, y: 0 });
+        if (onDragStart) onDragStart();
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (evt, gestureState) => {
+        pan.flattenOffset();
+        if (onDragEnd) onDragEnd(pan.x._value, pan.y._value);
+        
+        // Detect a tap if the drag distance is very small
+        if (Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5) {
+          if (onPress) onPress();
+        }
+      },
+      onPanResponderTerminate: () => {
+        pan.flattenOffset();
+        if (onDragEnd) onDragEnd(pan.x._value, pan.y._value);
+      }
+    })
+  ).current;
+
   return (
-    <View style={styles.dpadContainer}>
-      <Text style={styles.dpadLabel}>Position Adjust</Text>
-      <View style={styles.dpadGrid}>
-        <View style={styles.dpadRow}>
-          <TouchableOpacity style={styles.dpadBtnEmpty} disabled />
-          <TouchableOpacity style={styles.dpadBtn} onPress={() => onMove(0, -10)}>
-            <Text style={styles.dpadText}>▲</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.dpadBtnEmpty} disabled />
-        </View>
-        <View style={styles.dpadRow}>
-          <TouchableOpacity style={styles.dpadBtn} onPress={() => onMove(-10, 0)}>
-            <Text style={styles.dpadText}>◀</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.dpadBtnCenter} onPress={() => onMove(0, 0, true)}>
-            <Text style={{ fontSize: 10, color: COLORS.primary, fontWeight: 'bold' }}>CTR</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.dpadBtn} onPress={() => onMove(10, 0)}>
-            <Text style={styles.dpadText}>▶</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.dpadRow}>
-          <TouchableOpacity style={styles.dpadBtnEmpty} disabled />
-          <TouchableOpacity style={styles.dpadBtn} onPress={() => onMove(0, 10)}>
-            <Text style={styles.dpadText}>▼</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.dpadBtnEmpty} disabled />
-        </View>
-      </View>
-    </View>
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: pan.x,
+        top: pan.y,
+        zIndex: 10,
+      }}
+      {...(disabled ? {} : panResponder.panHandlers)}
+    >
+      {children}
+    </Animated.View>
   );
 };
+
 
 export default function DesignCustomizeScreen() {
   const { params, user, navigate } = useNavigation();
@@ -87,6 +110,23 @@ export default function DesignCustomizeScreen() {
   const [activeTextId, setActiveTextId] = useState(null);
   const [activeTab, setActiveTab] = useState('logo');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [includeProfileLink, setIncludeProfileLink] = useState(false);
+  const [profileLink, setProfileLink] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetchApi('/api/me.php');
+        if (response.success && response.data?.vcard?.url_alias) {
+          setProfileLink(`https://tapify-backend-production.up.railway.app/${response.data.vcard.url_alias}`);
+        }
+      } catch (error) {
+        console.log('Failed to fetch profile link:', error);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   useEffect(() => {
     const showSub = Platform.OS === 'android' ? 
@@ -106,7 +146,11 @@ export default function DesignCustomizeScreen() {
     return (
       <View style={styles.center}>
         <Text>No design selected.</Text>
-        <TouchableOpacity style={styles.btn} onPress={() => navigate('my-designs')}>
+        <TouchableOpacity style={styles.btn} onPress={() => navigate('my-designs', {
+          returnToTab: params?.returnToTab,
+          returnToCategory: params?.returnToCategory,
+          returnToGlobalCategory: params?.returnToGlobalCategory
+        })}>
           <Text style={styles.btnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -118,8 +162,7 @@ export default function DesignCustomizeScreen() {
     try {
       let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 1,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -130,13 +173,7 @@ export default function DesignCustomizeScreen() {
     }
   };
 
-  const moveLogo = (dx, dy, center = false) => {
-    setLogo(p => ({
-      ...p,
-      x: center ? (IMAGE_SIZE - p.size) / 2 : p.x + dx,
-      y: center ? (IMAGE_SIZE - p.size) / 2 : p.y + dy,
-    }));
-  };
+
 
   const addCustomText = () => {
     const newText = {
@@ -145,6 +182,8 @@ export default function DesignCustomizeScreen() {
       color: '#ffffff',
       fontSize: 20,
       fontWeight: 'bold',
+      textStyle: 'none',
+      borderColor: '#ffffff',
       x: IMAGE_SIZE / 2 - 40,
       y: IMAGE_SIZE / 2 - 15,
     };
@@ -157,18 +196,7 @@ export default function DesignCustomizeScreen() {
     setCustomTexts(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
   };
 
-  const moveCustomText = (id, dx, dy, center = false) => {
-    setCustomTexts(prev => prev.map(t => {
-      if (t.id === id) {
-        return {
-          ...t,
-          x: center ? IMAGE_SIZE / 2 - 40 : t.x + dx,
-          y: center ? IMAGE_SIZE / 2 - 15 : t.y + dy,
-        };
-      }
-      return t;
-    }));
-  };
+
 
   const deleteCustomText = (id) => {
     setCustomTexts(prev => prev.filter(t => t.id !== id));
@@ -177,12 +205,39 @@ export default function DesignCustomizeScreen() {
 
   const handleShare = async () => {
     try {
+      setActiveTextId(null);
+      await new Promise(r => setTimeout(r, 100)); // allow state to clear selection UI
       const uri = await viewRef.current.capture();
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(uri);
+      
+      if (includeProfileLink && profileLink) {
+        if (Platform.OS === 'ios') {
+          await Share.share({
+            message: `Check out my design!\nView my profile here: ${profileLink}`,
+            url: uri,
+          });
+        } else {
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(uri, { dialogTitle: 'Share Design' });
+            Alert.alert(
+              'Share Profile Link',
+              'Would you also like to share your profile link separately?',
+              [
+                { text: 'No', style: 'cancel' },
+                { text: 'Yes', onPress: () => Share.share({ message: `Check out my profile here: ${profileLink}` }) }
+              ]
+            );
+          } else {
+            alert('Sharing is not available on this device');
+          }
+        }
       } else {
-        alert('Sharing is not available on this device');
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri);
+        } else {
+          alert('Sharing is not available on this device');
+        }
       }
     } catch (e) {
       alert('Error sharing: ' + e.message);
@@ -196,6 +251,8 @@ export default function DesignCustomizeScreen() {
         alert('Permission required to save images to your gallery.');
         return;
       }
+      setActiveTextId(null);
+      await new Promise(r => setTimeout(r, 100)); // allow state to clear selection UI
       const uri = await viewRef.current.capture();
       await MediaLibrary.saveToLibraryAsync(uri);
       alert('Success! Design saved to your gallery.');
@@ -211,30 +268,45 @@ export default function DesignCustomizeScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView scrollEnabled={scrollEnabled} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {/* --- BACK BUTTON --- */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigate('my-designs')} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigate('my-designs', {
+          returnToTab: params?.returnToTab,
+          returnToCategory: params?.returnToCategory,
+          returnToGlobalCategory: params?.returnToGlobalCategory
+        })} activeOpacity={0.7}>
           <Text style={styles.backBtnText}>← Back</Text>
         </TouchableOpacity>
 
         {/* --- LIVE PREVIEW CANVAS --- */}
         <View style={styles.previewContainer}>
-          <ViewShot ref={viewRef} options={{ format: 'jpg', quality: 1.0 }} style={styles.imageWrapper}>
-            <Image source={{ uri: design.image_url }} style={styles.baseImage} />
+          <ViewShot ref={viewRef} options={{ format: 'jpg', quality: 1.0 }} style={styles.viewShotContainer}>
+            <View style={styles.imageContentWrapper}>
+              <Image source={{ uri: design.image_url }} style={styles.baseImage} />
             
             {/* Logo */}
             {logo.visible && (
-              <View style={[
-                styles.logoContainer, 
-                { 
-                  left: logo.x,
-                  top: logo.y,
-                  width: logo.size, 
-                  height: logo.size, 
-                  borderRadius: logo.shape === 'circle' ? logo.size / 2 : 8 
-                }
-              ]}>
+              <DraggableElement 
+                x={logo.x} 
+                y={logo.y} 
+                onDragStart={() => setScrollEnabled(false)}
+                onDragEnd={(nx, ny) => {
+                  setScrollEnabled(true);
+                  setLogo(p => ({ ...p, x: nx, y: ny }));
+                }}
+              >
+                <View style={[
+                  styles.logoContainer, 
+                  { 
+                    position: 'relative',
+                    left: undefined,
+                    top: undefined,
+                    width: logo.shape === 'rectangle' ? logo.size * 2 : logo.size, 
+                    height: logo.size, 
+                    borderRadius: logo.shape === 'circle' ? logo.size / 2 : (logo.shape === 'rectangle' ? 0 : 8)
+                  }
+                ]}>
                 {logo.url ? (
                   <Image source={{ uri: logo.url }} style={styles.logoImage} />
                 ) : (
@@ -244,26 +316,40 @@ export default function DesignCustomizeScreen() {
                     </Text>
                   </View>
                 )}
-              </View>
+                </View>
+              </DraggableElement>
             )}
 
             {/* Custom Texts */}
             {customTexts.map((item) => (
-              <TouchableOpacity 
+              <DraggableElement
                 key={item.id}
-                activeOpacity={0.9} 
+                x={item.x}
+                y={item.y}
+                onDragStart={() => setScrollEnabled(false)}
+                onDragEnd={(nx, ny) => {
+                  setScrollEnabled(true);
+                  setCustomTexts(prev => prev.map(t => t.id === item.id ? { ...t, x: nx, y: ny } : t));
+                }}
                 onPress={() => { setActiveTextId(item.id); setActiveTab('text'); }}
-                style={[
-                  styles.customTextWrapper, 
-                  activeTextId === item.id && styles.customTextActive,
-                  { left: item.x, top: item.y }
-                ]}
               >
-                <Text style={{ color: item.color, fontSize: item.fontSize, fontWeight: item.fontWeight }}>
-                  {item.text}
-                </Text>
-              </TouchableOpacity>
+                <View 
+                  style={[
+                    styles.customTextWrapper, 
+                    { position: 'relative', left: undefined, top: undefined },
+                    activeTextId === item.id && styles.customTextActive,
+                    item.textStyle === 'border' && { borderWidth: 2, borderColor: item.borderColor || '#fff', borderRadius: 4 },
+                    item.textStyle === 'underline' && { borderBottomWidth: 2, borderBottomColor: item.borderColor || '#fff', borderRadius: 0 }
+                  ]}
+                >
+                  <Text style={{ color: item.color, fontSize: item.fontSize, fontWeight: item.fontWeight }}>
+                    {item.text}
+                  </Text>
+                </View>
+              </DraggableElement>
             ))}
+
+            </View>
 
             {/* Bottom Info Bar */}
             {contactBar.visible && (
@@ -307,9 +393,6 @@ export default function DesignCustomizeScreen() {
 
                 {logo.visible && (
                   <>
-                    {/* DPAD FOR LOGO */}
-                    <DPadControl onMove={(dx, dy, center) => moveLogo(dx, dy, center)} />
-
                     <TouchableOpacity style={styles.uploadBtn} onPress={handlePickLogo}>
                       <Text style={styles.uploadBtnText}>📤 Upload Custom Logo</Text>
                     </TouchableOpacity>
@@ -321,6 +404,9 @@ export default function DesignCustomizeScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.shapeBtn, logo.shape === 'square' && styles.shapeBtnActive]} onPress={() => setLogo(p => ({ ...p, shape: 'square' }))}>
                         <Text style={logo.shape === 'square' ? styles.activeText : {}}>⬜ Square</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.shapeBtn, logo.shape === 'rectangle' && styles.shapeBtnActive]} onPress={() => setLogo(p => ({ ...p, shape: 'rectangle' }))}>
+                        <Text style={logo.shape === 'rectangle' ? styles.activeText : {}}>▭ Rectangle</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -424,9 +510,6 @@ export default function DesignCustomizeScreen() {
                           onChangeText={val => updateCustomText(activeTextId, 'text', val)} 
                         />
 
-                        {/* DPAD FOR TEXT */}
-                        <DPadControl onMove={(dx, dy, center) => moveCustomText(activeTextId, dx, dy, center)} />
-
                         <Text style={styles.label}>Font Size</Text>
                         <View style={styles.row}>
                           <TouchableOpacity style={styles.iconBtn} onPress={() => {
@@ -443,6 +526,43 @@ export default function DesignCustomizeScreen() {
                             <Text style={{ fontSize: 20 }}>+</Text>
                           </TouchableOpacity>
                         </View>
+
+                        <Text style={styles.label}>Style (Border / Underline)</Text>
+                        <View style={styles.row}>
+                          <TouchableOpacity 
+                            style={[styles.shapeBtn, customTexts.find(t => t.id === activeTextId)?.textStyle === 'none' && styles.shapeBtnActive]} 
+                            onPress={() => updateCustomText(activeTextId, 'textStyle', 'none')}
+                          >
+                            <Text style={customTexts.find(t => t.id === activeTextId)?.textStyle === 'none' ? styles.activeText : {}}>None</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={[styles.shapeBtn, customTexts.find(t => t.id === activeTextId)?.textStyle === 'border' && styles.shapeBtnActive]} 
+                            onPress={() => updateCustomText(activeTextId, 'textStyle', 'border')}
+                          >
+                            <Text style={customTexts.find(t => t.id === activeTextId)?.textStyle === 'border' ? styles.activeText : {}}>Border</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={[styles.shapeBtn, customTexts.find(t => t.id === activeTextId)?.textStyle === 'underline' && styles.shapeBtnActive]} 
+                            onPress={() => updateCustomText(activeTextId, 'textStyle', 'underline')}
+                          >
+                            <Text style={customTexts.find(t => t.id === activeTextId)?.textStyle === 'underline' ? styles.activeText : {}}>Underline</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {(customTexts.find(t => t.id === activeTextId)?.textStyle === 'border' || customTexts.find(t => t.id === activeTextId)?.textStyle === 'underline') && (
+                          <>
+                            <Text style={styles.label}>Border / Underline Color</Text>
+                            <View style={styles.colorRow}>
+                              {presetColors.map(c => (
+                                <TouchableOpacity 
+                                  key={c} 
+                                  style={[styles.colorSwatch, { backgroundColor: c }, customTexts.find(t => t.id === activeTextId)?.borderColor === c && styles.colorSwatchActive]}
+                                  onPress={() => updateCustomText(activeTextId, 'borderColor', c)}
+                                />
+                              ))}
+                            </View>
+                          </>
+                        )}
 
                         <Text style={styles.label}>Text Color</Text>
                         <View style={styles.colorRow}>
@@ -465,6 +585,19 @@ export default function DesignCustomizeScreen() {
         {/* --- ACTIONS --- */}
         <View style={styles.actionsContainer}>
           <Text style={styles.helpText}>Download saves to your gallery. Share sends to WhatsApp/Socials.</Text>
+          
+          {profileLink && (
+            <View style={styles.profileLinkToggleRow}>
+              <Text style={styles.profileLinkToggleText}>Include Profile Link when sharing</Text>
+              <Switch 
+                value={includeProfileLink} 
+                onValueChange={setIncludeProfileLink}
+                trackColor={{ false: '#e2e8f0', true: COLORS.primary }}
+                thumbColor={includeProfileLink ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+          )}
+
           <View style={styles.buttonsRow}>
             <TouchableOpacity style={[styles.actionBtn, styles.downloadBtn]} onPress={handleDownload}>
               <Text style={styles.downloadBtnText}>⬇️ Download</Text>
@@ -500,10 +633,14 @@ const styles = StyleSheet.create({
   
   // Preview
   previewContainer: { alignItems: 'center', marginVertical: 10 },
-  imageWrapper: {
-    width: IMAGE_SIZE, height: IMAGE_SIZE, backgroundColor: '#fff',
+  viewShotContainer: {
+    width: IMAGE_SIZE, 
+    backgroundColor: '#fff',
     overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 10, elevation: 5, position: 'relative',
+    shadowOpacity: 0.1, shadowRadius: 10, elevation: 5,
+  },
+  imageContentWrapper: {
+    width: IMAGE_SIZE, height: IMAGE_SIZE, position: 'relative', overflow: 'hidden',
   },
   baseImage: { width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 },
   
@@ -518,10 +655,9 @@ const styles = StyleSheet.create({
   placeholderLogoText: { color: '#fff', fontWeight: 'bold' },
   
   customTextWrapper: { position: 'absolute', padding: 4, borderWidth: 1, borderColor: 'transparent', borderRadius: 4 },
-  customTextActive: { borderColor: '#fff', backgroundColor: 'rgba(0,0,0,0.2)', borderStyle: 'dashed' },
+  customTextActive: { backgroundColor: 'rgba(0,0,0,0.2)' },
 
   bottomInfoBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
     paddingVertical: 12, paddingHorizontal: 16,
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
   },
@@ -566,18 +702,12 @@ const styles = StyleSheet.create({
   textChipActive: { backgroundColor: COLORS.primary },
   activeTextEditor: { backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, marginTop: 10, borderWidth: 1, borderColor: COLORS.border },
 
-  // D-Pad Styles
-  dpadContainer: { alignItems: 'center', marginVertical: 12 },
-  dpadLabel: { fontSize: 12, fontWeight: 'bold', color: COLORS.textMuted, marginBottom: 8 },
-  dpadGrid: { width: 150, height: 150, justifyContent: 'space-between' },
-  dpadRow: { flexDirection: 'row', justifyContent: 'space-between', height: 46 },
-  dpadBtn: { width: 46, height: 46, backgroundColor: '#f3f4f6', borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#e5e7eb' },
-  dpadBtnCenter: { width: 46, height: 46, backgroundColor: 'rgba(21, 62, 63, 0.05)', borderRadius: 23, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(21, 62, 63, 0.2)' },
-  dpadBtnEmpty: { width: 46, height: 46, backgroundColor: 'transparent' },
-  dpadText: { fontSize: 18, color: '#374151' },
+
 
   // Actions
   actionsContainer: { padding: 16, backgroundColor: COLORS.surface, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border },
+  profileLinkToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 4, paddingHorizontal: 4 },
+  profileLinkToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
   actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
   downloadBtn: { backgroundColor: '#fff', borderColor: COLORS.border },

@@ -117,10 +117,18 @@ export default function Header({ title }) {
   const topInset = insets.top;
   const [vcard, setVcard] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [bellModalVisible, setBellModalVisible] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetchApi('/api/notifications/list.php');
+        if (res.success && res.unread_count !== undefined) {
+          setUnreadCount(parseInt(res.unread_count, 10));
+        }
+      } catch (e) {}
+    };
+
     const fetchVcard = async () => {
       try {
         const response = await fetchApi('/api/me.php');
@@ -134,6 +142,7 @@ export default function Header({ title }) {
 
     if (user) {
       fetchVcard();
+      fetchUnread();
     }
   }, [user]);
 
@@ -167,8 +176,7 @@ export default function Header({ title }) {
       <TouchableOpacity 
         style={styles.qrButton} 
         onPress={() => {
-          setBellModalVisible(true);
-          setUnreadCount(0);
+          navigate('notifications');
         }}
         activeOpacity={0.7}
       >
@@ -253,72 +261,6 @@ export default function Header({ title }) {
                   <Text style={[styles.shareBtnText, styles.closeBtnText]}>Close</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Notifications Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={bellModalVisible}
-        onRequestClose={() => setBellModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={styles.modalBackdrop} 
-            activeOpacity={1} 
-            onPress={() => setBellModalVisible(false)} 
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Notifications</Text>
-              <TouchableOpacity onPress={() => setBellModalVisible(false)} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <ScrollView style={styles.notiScroll} showsVerticalScrollIndicator={false}>
-                {/* Noti 1 */}
-                <View style={styles.notiItem}>
-                  <Text style={styles.notiEmoji}>🏪</Text>
-                  <View style={styles.notiTextContainer}>
-                    <Text style={styles.notiTitle}>Store Status Active</Text>
-                    <Text style={styles.notiDesc}>Your WhatsApp Store is online and ready for orders.</Text>
-                    <Text style={styles.notiTime}>2 hours ago</Text>
-                  </View>
-                </View>
-
-                <View style={styles.notiDivider} />
-
-                {/* Noti 2 */}
-                <View style={styles.notiItem}>
-                  <Text style={styles.notiEmoji}>📅</Text>
-                  <View style={styles.notiTextContainer}>
-                    <Text style={styles.notiTitle}>New Appointment</Text>
-                    <Text style={styles.notiDesc}>John Doe scheduled a consultation session.</Text>
-                    <Text style={styles.notiTime}>5 hours ago</Text>
-                  </View>
-                </View>
-
-                <View style={styles.notiDivider} />
-
-                {/* Noti 3 */}
-                <View style={styles.notiItem}>
-                  <Text style={styles.notiEmoji}>🎉</Text>
-                  <View style={styles.notiTextContainer}>
-                    <Text style={styles.notiTitle}>Welcome to Tapify!</Text>
-                    <Text style={styles.notiDesc}>Start generating high-impact vCards and sharing them instantly.</Text>
-                    <Text style={styles.notiTime}>1 day ago</Text>
-                  </View>
-                </View>
-              </ScrollView>
-
-              <TouchableOpacity style={[styles.shareBtn, styles.closeBtn, { width: '100%', marginTop: 16 }]} onPress={() => setBellModalVisible(false)} activeOpacity={0.8}>
-                <Text style={[styles.shareBtnText, styles.closeBtnText]}>Dismiss</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </View>

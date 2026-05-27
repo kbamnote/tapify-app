@@ -21,7 +21,8 @@
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
-      "./plugins/withHermesCommand"
+      "./plugins/withHermesCommand",
+      "./plugins/withMainApplication"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

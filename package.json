@@ -13,6 +13,7 @@
     "@react-native-community/datetimepicker": "8.6.0",
     "expo": "~55.0.9",
     "expo-constants": "~55.0.16",
+    "expo-dev-client": "~55.0.35",
     "expo-device": "~55.0.17",
     "expo-image-picker": "~55.0.20",
     "expo-media-library": "~55.0.17",

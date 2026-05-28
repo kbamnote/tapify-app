@@ -12,6 +12,7 @@ import { COLORS } from '../theme/colors';
 
 const NAV_ITEMS = [
   { id: 'inquiries',        label: 'Inquiries',        icon: '💬' },
+  { id: 'businesses',       label: 'Businesses',       icon: '🏢' },
   { id: 'whatsapp-stores',  label: 'WhatsApp Stores',  icon: '🏪' },
   { id: 'whatsapp-orders',  label: 'WhatsApp Orders',  icon: '🛍️' },
   { id: 'my-designs',       label: 'My Designs',       icon: '🎨' },

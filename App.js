@@ -26,6 +26,7 @@ import MyDesignsScreen from './src/screens/MyDesignsScreen';
 import DesignCustomizeScreen from './src/screens/DesignCustomizeScreen';
 import ReviewsScreen from './src/screens/ReviewsScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import BusinessesScreen from './src/screens/BusinessesScreen';
 
 // Components
 import Header from './src/components/Header';
@@ -65,6 +66,8 @@ function ScreenRenderer() {
       return <ReviewsScreen />;
     case 'notifications':
       return <NotificationsScreen />;
+    case 'businesses':
+      return <BusinessesScreen />;
     default:
       return <DashboardScreen />;
   }
@@ -111,6 +114,7 @@ function MainLayout() {
       case 'design-customize': return 'Customize Design';
       case 'reviews-funnel': return 'Reviews Funnel';
       case 'notifications': return 'Notification Center';
+      case 'businesses':    return 'Business Directory';
       default: return 'Tapify';
     }
   };

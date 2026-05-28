@@ -71,8 +71,27 @@ function ScreenRenderer() {
 }
 
 function MainLayout() {
-  // BUG FIX: Added `navigate` to destructure — was missing, caused ReferenceError in navRef below
   const { currentScreen, user, navigate } = useNavigation();
+
+  // ALL HOOKS MUST COME BEFORE ANY EARLY RETURN — Rules of Hooks
+  // The `if (!user) return` guard lives inside the effect body, not before it.
+  useEffect(() => {
+    if (!user) return;
+
+    // Register and save the Expo push token to backend
+    registerForPushNotificationsAsync().then(token => {
+      if (token) sendTokenToBackend(token);
+    });
+
+    // Wire notification tap → in-app navigation
+    const navRef = { current: { navigate: (screen) => navigate(screen) } };
+    const { notificationListener, responseListener } = setupNotificationListeners(navRef);
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, [user]);
 
   if (currentScreen === 'login' || !user) {
     return <LoginScreen />;
@@ -95,29 +114,6 @@ function MainLayout() {
       default: return 'Tapify';
     }
   };
-
-  useEffect(() => {
-    if (!user) return;
-
-    // BUG FIX 1: Replaced dynamic import() with static imports at top of file.
-    // BUG FIX 2: Cleanup now returns directly from useEffect so React actually calls it.
-    // BUG FIX 3: navigate is now in scope (destructured above).
-
-    // Register and save the Expo push token to backend
-    registerForPushNotificationsAsync().then(token => {
-      if (token) sendTokenToBackend(token);
-    });
-
-    // Wire notification tap → in-app navigation
-    const navRef = { current: { navigate: (screen) => navigate(screen) } };
-    const { notificationListener, responseListener } = setupNotificationListeners(navRef);
-
-    // Proper cleanup: returned directly from useEffect so React calls it on unmount/user change
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
-    };
-  }, [user]);
 
   return (
     <SafeAreaView style={styles.container}>

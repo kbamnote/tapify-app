@@ -206,41 +206,66 @@ export default function DesignCustomizeScreen() {
   const handleShare = async () => {
     try {
       setActiveTextId(null);
-      await new Promise(r => setTimeout(r, 100)); // allow state to clear selection UI
+      // Wait for selection UI to clear before capturing
+      await new Promise(r => setTimeout(r, 150));
+
+      // Capture the design image
+      if (!viewRef.current) {
+        Alert.alert('Error', 'Could not capture design. Please try again.');
+        return;
+      }
       const uri = await viewRef.current.capture();
-      
-      if (includeProfileLink && profileLink) {
-        if (Platform.OS === 'ios') {
+
+      const hasLink = includeProfileLink && profileLink;
+      const linkSuffix = hasLink ? `\n\nView my profile: ${profileLink}` : '';
+
+      // ── iOS: Share.share() supports url + message in one dialog ───────────
+      if (Platform.OS === 'ios') {
+        await Share.share({
+          message: `Check out my design from Tapify!${linkSuffix}`,
+          url: uri,
+        });
+        return;
+      }
+
+      // ── Android ────────────────────────────────────────────────────────────
+      const isAvailable = await Sharing.isAvailableAsync();
+
+      if (isAvailable) {
+        // Share the image file
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/jpeg',
+          dialogTitle: 'Share Design',
+          UTI: 'public.jpeg',
+        });
+        // After image share, automatically share the profile link if toggled on
+        // (separate Share.share call — Android cannot combine file + text in one intent)
+        if (hasLink) {
           await Share.share({
-            message: `Check out my design!\nView my profile here: ${profileLink}`,
-            url: uri,
+            message: `View my Tapify profile: ${profileLink}`,
+            title: 'Share Profile Link',
           });
-        } else {
-          const isAvailable = await Sharing.isAvailableAsync();
-          if (isAvailable) {
-            await Sharing.shareAsync(uri, { dialogTitle: 'Share Design' });
-            Alert.alert(
-              'Share Profile Link',
-              'Would you also like to share your profile link separately?',
-              [
-                { text: 'No', style: 'cancel' },
-                { text: 'Yes', onPress: () => Share.share({ message: `Check out my profile here: ${profileLink}` }) }
-              ]
-            );
-          } else {
-            alert('Sharing is not available on this device');
-          }
         }
       } else {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(uri);
-        } else {
-          alert('Sharing is not available on this device');
-        }
+        // Fallback for devices where file sharing is unavailable:
+        // Share as plain text so the link still gets through
+        await Share.share({
+          message: hasLink
+            ? `Check out my design on Tapify!${linkSuffix}`
+            : 'Check out my design on Tapify!',
+          title: 'Share from Tapify',
+        });
       }
     } catch (e) {
-      alert('Error sharing: ' + e.message);
+      // Don't show an error if the user simply dismissed the share sheet
+      const msg = e?.message || '';
+      if (
+        !msg.toLowerCase().includes('cancel') &&
+        msg !== 'User did not share' &&
+        !msg.toLowerCase().includes('dismiss')
+      ) {
+        Alert.alert('Could Not Share', 'Something went wrong. Try downloading the design instead.');
+      }
     }
   };
 

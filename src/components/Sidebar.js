@@ -13,8 +13,8 @@ import { COLORS } from '../theme/colors';
 const NAV_ITEMS = [
   { id: 'inquiries',        label: 'Inquiries',        icon: '💬' },
   { id: 'businesses',       label: 'Businesses',       icon: '🏢' },
-  { id: 'whatsapp-stores',  label: 'WhatsApp Stores',  icon: '🏪' },
-  { id: 'whatsapp-orders',  label: 'WhatsApp Orders',  icon: '🛍️' },
+  { id: 'whatsapp-stores',  label: 'Web Store',         icon: '🏪' },
+  { id: 'whatsapp-orders',  label: 'Web Orders',        icon: '🛍️' },
   { id: 'my-designs',       label: 'My Designs',       icon: '🎨' },
   { id: 'reviews-funnel',   label: 'Reviews Funnel',   icon: '⭐' },
   { id: 'settings',         label: 'Settings',         icon: '⚙️' },

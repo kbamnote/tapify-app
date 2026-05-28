@@ -6,7 +6,7 @@ import { COLORS } from '../theme/colors';
 
 const TAB_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'vcards-edit', label: 'vCard Edit', icon: '📇' },
+  { id: 'vcards-edit', label: 'Edit', icon: '📇' },
   { id: 'appointments', label: 'Appointments', icon: '📅' },
   { id: 'profile', label: 'Profile', icon: '👤' },
 ];

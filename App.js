@@ -108,8 +108,8 @@ function MainLayout() {
       case 'profile': return 'Profile Settings';
       case 'settings': return 'Platform Settings';
       case 'vcards-edit': return 'Edit vCard';
-      case 'whatsapp-stores': return 'WhatsApp Stores';
-      case 'whatsapp-orders': return 'WhatsApp Orders';
+      case 'whatsapp-stores': return 'Web Store';
+      case 'whatsapp-orders': return 'Web Orders';
       case 'my-designs': return 'My Designs';
       case 'design-customize': return 'Customize Design';
       case 'reviews-funnel': return 'Reviews Funnel';

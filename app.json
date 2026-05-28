@@ -30,7 +30,7 @@
           "icon": "./assets/app-icon.png",
           "color": "#153e3f",
           "defaultChannel": "default",
-          "sounds": ["./assets/sounds/tapify-notification.mp3"]
+          "sounds": ["./assets/notification_sound.mpeg"]
         }
       ]
     ],

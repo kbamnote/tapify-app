@@ -17,7 +17,7 @@ export async function registerForPushNotificationsAsync() {
     await Notifications.setNotificationChannelAsync('tapify_alerts', {
       name: 'Tapify Alerts',
       importance: Notifications.AndroidImportance.MAX,
-      sound: 'tapify-notification.mp3',   // filename only, no path
+      sound: 'notification_sound.mpeg',   // filename only, no path
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#153e3f',
     });

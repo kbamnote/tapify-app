@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Image, Animated, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Notifications from 'expo-notifications';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 import { COLORS } from './src/theme/colors';
@@ -10,6 +9,7 @@ import {
   registerForPushNotificationsAsync,
   sendTokenToBackend,
   setupNotificationListeners,
+  handleLaunchNotification,
 } from './src/services/NotificationService';
 
 // Screens
@@ -81,19 +81,18 @@ function MainLayout() {
   useEffect(() => {
     if (!user) return;
 
-    // Register and save the Expo push token to backend
+    // Register channels + permission + get token, then save to backend
     registerForPushNotificationsAsync().then(token => {
       if (token) sendTokenToBackend(token);
     });
 
-    // Wire notification tap → in-app navigation
-    const navRef = { current: { navigate: (screen) => navigate(screen) } };
-    const { notificationListener, responseListener } = setupNotificationListeners(navRef);
+    // Handle notification that launched the app from killed state
+    handleLaunchNotification(navigate);
 
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
-    };
+    // Wire foreground + tap listeners → in-app navigation
+    const cleanup = setupNotificationListeners(navigate);
+
+    return cleanup;
   }, [user]);
 
   if (currentScreen === 'login' || !user) {

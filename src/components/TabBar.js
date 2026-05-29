@@ -8,7 +8,7 @@ const TAB_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'vcards-edit', label: 'Edit', icon: '📇' },
   { id: 'appointments', label: 'Appointments', icon: '📅' },
-  { id: 'profile', label: 'Profile', icon: '👤' },
+  { id: 'my-designs', label: 'My Designs', icon: '🎨' },
 ];
 
 export default function TabBar() {

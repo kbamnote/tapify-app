@@ -19,7 +19,12 @@
       "package": "com.kbamnote.tapifapp",
       "icon": "./assets/app-icon.png",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 36
+      "versionCode": 37,
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "plugins": [
       "./plugins/withMainApplication",
@@ -28,7 +33,7 @@
         {
           "icon": "./assets/app-icon.png",
           "color": "#153e3f",
-          "defaultChannel": "default",
+          "defaultChannel": "tapify_alerts",
           "sounds": [
             "./assets/notification_sound.mpeg"
           ]

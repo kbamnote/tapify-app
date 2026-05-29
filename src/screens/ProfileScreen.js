@@ -4,6 +4,7 @@ import {
   Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
   Modal, FlatList,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
@@ -45,6 +46,12 @@ export default function ProfileScreen() {
   const [bizPhone,       setBizPhone]       = useState('');
   const [listed,         setListed]         = useState(true);
   const [bizLogo,        setBizLogo]        = useState(null);
+  const [panNo,          setPanNo]          = useState('');
+  const [address,        setAddress]        = useState('');
+  const [ownerDob,       setOwnerDob]       = useState('');
+  const [dateOfIncorp,   setDateOfIncorp]   = useState('');
+  const [showOwnerDobPicker,   setShowOwnerDobPicker]   = useState(false);
+  const [showIncorpPicker,     setShowIncorpPicker]     = useState(false);
   const [loadingBusiness,setLoadingBusiness]= useState(false);
   const [savingBusiness, setSavingBusiness] = useState(false);
   const [uploadingLogo,  setUploadingLogo]  = useState(false);
@@ -54,6 +61,8 @@ export default function ProfileScreen() {
   const emailRef    = useRef(null);
   const phoneRef    = useRef(null);
   const gstinRef    = useRef(null);
+  const panRef      = useRef(null);
+  const addressRef  = useRef(null);
   const cityRef     = useRef(null);
   const websiteRef  = useRef(null);
   const bizPhoneRef = useRef(null);
@@ -89,15 +98,19 @@ export default function ProfileScreen() {
       const response = await fetchApi('/api/business/get.php');
       if (response.success && response.data?.business) {
         const b = response.data.business;
-        setBusinessName(b.business_name || '');
-        setGstin(b.gstin               || '');
-        setCategory(b.category         || '');
-        setDescription(b.description   || '');
-        setCity(b.city                 || '');
-        setWebsite(b.website           || '');
-        setBizPhone(b.phone            || '');
+        setBusinessName(b.business_name   || '');
+        setGstin(b.gstin                 || '');
+        setCategory(b.category           || '');
+        setDescription(b.description     || '');
+        setCity(b.city                   || '');
+        setWebsite(b.website             || '');
+        setBizPhone(b.phone              || '');
+        setPanNo(b.pan_no                || '');
+        setAddress(b.address             || '');
+        setOwnerDob(b.owner_dob          || '');
+        setDateOfIncorp(b.date_of_incorp || '');
         setListed(b.listed !== false);
-        setBizLogo(b.logo_url          || null);
+        setBizLogo(b.logo_url            || null);
       }
     } catch (error) {
       console.log('Failed to load business', error);
@@ -136,13 +149,17 @@ export default function ProfileScreen() {
       const response = await fetchApi('/api/business/save.php', {
         method: 'POST',
         body: JSON.stringify({
-          business_name: businessName,
+          business_name:  businessName,
           gstin,
           category,
           description,
           city,
           website,
-          phone: bizPhone,
+          phone:          bizPhone,
+          pan_no:         panNo,
+          address,
+          owner_dob:      ownerDob    || null,
+          date_of_incorp: dateOfIncorp || null,
           listed,
         }),
       });
@@ -494,9 +511,178 @@ export default function ProfileScreen() {
                   placeholder="WhatsApp or contact number"
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="phone-pad"
-                  returnKeyType="done"
-                  onSubmitEditing={handleSaveBusiness}
+                  returnKeyType="next"
+                  onSubmitEditing={() => panRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  PAN No <Text style={styles.optional}>(Optional)</Text>
+                </Text>
+                <TextInput
+                  ref={panRef}
+                  style={styles.input}
+                  value={panNo}
+                  onChangeText={t => setPanNo(t.toUpperCase())}
+                  placeholder="ABCDE1234F"
+                  placeholderTextColor={COLORS.textMuted}
+                  autoCapitalize="characters"
+                  maxLength={10}
+                  returnKeyType="next"
+                  onSubmitEditing={() => addressRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+                <Text style={styles.hint}>10-character Permanent Account Number</Text>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Address <Text style={styles.optional}>(Optional)</Text>
+                </Text>
+                <TextInput
+                  ref={addressRef}
+                  style={[styles.input, styles.textArea]}
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Full business address..."
+                  placeholderTextColor={COLORS.textMuted}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  returnKeyType="done"
+                />
+              </View>
+
+              {/* Date of Birth (Owner) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Date of Birth (Owner) <Text style={styles.optional}>(Optional)</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[styles.input, styles.pickerRow]}
+                  onPress={() => setShowOwnerDobPicker(true)}
+                >
+                  <Text style={ownerDob ? styles.pickerValue : styles.pickerPlaceholder}>
+                    📅  {ownerDob
+                      ? new Date(ownerDob).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+                      : 'Tap to select date'}
+                  </Text>
+                  <Text style={styles.pickerArrow}>▾</Text>
+                </TouchableOpacity>
+                {showOwnerDobPicker && (
+                  Platform.OS === 'ios' ? (
+                    <Modal transparent animationType="slide" visible={showOwnerDobPicker}>
+                      <View style={styles.dobModalOverlay}>
+                        <View style={styles.dobModalContent}>
+                          <View style={styles.dobModalHeader}>
+                            <Text style={styles.dobModalTitle}>Date of Birth (Owner)</Text>
+                            <TouchableOpacity onPress={() => setShowOwnerDobPicker(false)}>
+                              <Text style={styles.dobModalDone}>Done</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <DateTimePicker
+                            value={ownerDob ? new Date(ownerDob) : new Date()}
+                            mode="date"
+                            display="spinner"
+                            maximumDate={new Date()}
+                            onChange={(e, d) => {
+                              if (d) {
+                                const yyyy = d.getFullYear();
+                                const mm = String(d.getMonth()+1).padStart(2,'0');
+                                const dd = String(d.getDate()).padStart(2,'0');
+                                setOwnerDob(`${yyyy}-${mm}-${dd}`);
+                              }
+                              setShowOwnerDobPicker(false);
+                            }}
+                            style={{ width: '100%' }}
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  ) : (
+                    <DateTimePicker
+                      value={ownerDob ? new Date(ownerDob) : new Date()}
+                      mode="date"
+                      display="calendar"
+                      maximumDate={new Date()}
+                      onChange={(e, d) => {
+                        setShowOwnerDobPicker(false);
+                        if (e.type === 'dismissed' || !d) return;
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth()+1).padStart(2,'0');
+                        const dd = String(d.getDate()).padStart(2,'0');
+                        setOwnerDob(`${yyyy}-${mm}-${dd}`);
+                      }}
+                    />
+                  )
+                )}
+              </View>
+
+              {/* Date of Incorporation */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Date of Incorporation <Text style={styles.optional}>(Optional)</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[styles.input, styles.pickerRow]}
+                  onPress={() => setShowIncorpPicker(true)}
+                >
+                  <Text style={dateOfIncorp ? styles.pickerValue : styles.pickerPlaceholder}>
+                    🏢  {dateOfIncorp
+                      ? new Date(dateOfIncorp).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+                      : 'Tap to select date'}
+                  </Text>
+                  <Text style={styles.pickerArrow}>▾</Text>
+                </TouchableOpacity>
+                {showIncorpPicker && (
+                  Platform.OS === 'ios' ? (
+                    <Modal transparent animationType="slide" visible={showIncorpPicker}>
+                      <View style={styles.dobModalOverlay}>
+                        <View style={styles.dobModalContent}>
+                          <View style={styles.dobModalHeader}>
+                            <Text style={styles.dobModalTitle}>Date of Incorporation</Text>
+                            <TouchableOpacity onPress={() => setShowIncorpPicker(false)}>
+                              <Text style={styles.dobModalDone}>Done</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <DateTimePicker
+                            value={dateOfIncorp ? new Date(dateOfIncorp) : new Date()}
+                            mode="date"
+                            display="spinner"
+                            maximumDate={new Date()}
+                            onChange={(e, d) => {
+                              if (d) {
+                                const yyyy = d.getFullYear();
+                                const mm = String(d.getMonth()+1).padStart(2,'0');
+                                const dd = String(d.getDate()).padStart(2,'0');
+                                setDateOfIncorp(`${yyyy}-${mm}-${dd}`);
+                              }
+                              setShowIncorpPicker(false);
+                            }}
+                            style={{ width: '100%' }}
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  ) : (
+                    <DateTimePicker
+                      value={dateOfIncorp ? new Date(dateOfIncorp) : new Date()}
+                      mode="date"
+                      display="calendar"
+                      maximumDate={new Date()}
+                      onChange={(e, d) => {
+                        setShowIncorpPicker(false);
+                        if (e.type === 'dismissed' || !d) return;
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth()+1).padStart(2,'0');
+                        const dd = String(d.getDate()).padStart(2,'0');
+                        setDateOfIncorp(`${yyyy}-${mm}-${dd}`);
+                      }}
+                    />
+                  )
+                )}
               </View>
 
               <TouchableOpacity
@@ -823,5 +1009,35 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Date picker modal (iOS)
+  dobModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  dobModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+  dobModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  dobModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  dobModalDone: {
+    fontSize: 15,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });

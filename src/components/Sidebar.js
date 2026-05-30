@@ -13,14 +13,16 @@ import { COLORS } from '../theme/colors';
 const NAV_ITEMS = [
   { id: 'inquiries',        label: 'Inquiries',        icon: '💬' },
   { id: 'businesses',       label: 'Businesses',       icon: '🏢' },
-  { id: 'whatsapp-stores',  label: 'Web Store',         icon: '🏪' },
-  { id: 'whatsapp-orders',  label: 'Web Orders',        icon: '🛍️' },
+  { id: 'whatsapp-stores',  label: 'Web Store',        icon: '🏪' },
+  { id: 'whatsapp-orders',  label: 'Web Orders',       icon: '🛍️' },
   { id: 'reviews-funnel',   label: 'Reviews Funnel',   icon: '⭐' },
   { id: 'settings',         label: 'Settings',         icon: '⚙️' },
 ];
 
 export default function Sidebar() {
-  const { currentScreen, navigate, sidebarOpen, setSidebarOpen, logout } = useNavigation();
+  const { currentScreen, navigate, sidebarOpen, setSidebarOpen, logout, user } = useNavigation();
+  const isTitanium = user?.titanium?.is_active == 1 || user?.titanium?.is_active === true;
+  const isAdmin    = user?.role === 'admin';
 
   if (!sidebarOpen) return null;
 
@@ -57,6 +59,33 @@ export default function Sidebar() {
               </TouchableOpacity>
             );
           })}
+
+          {/* Titanium Member — only shown if admin granted access */}
+          {isTitanium && (
+            <TouchableOpacity
+              style={[styles.titaniumItem, currentScreen === 'titanium' && styles.titaniumItemActive]}
+              onPress={() => navigate('titanium')}
+            >
+              <View style={styles.titaniumLeft}>
+                <Text style={styles.navIcon}>♛</Text>
+                <Text style={styles.titaniumLabel}>Titanium Member</Text>
+              </View>
+              <View style={styles.titaniumBadge}>
+                <Text style={styles.titaniumBadgeText}>ELITE</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Admin: Manage Titanium — only for admin role */}
+          {isAdmin && (
+            <TouchableOpacity
+              style={[styles.navItem, styles.adminItem, currentScreen === 'admin-titanium' && styles.navItemActive]}
+              onPress={() => navigate('admin-titanium')}
+            >
+              <Text style={styles.navIcon}>🛡️</Text>
+              <Text style={[styles.navLabel, { color: '#c1a046' }]}>Manage Titanium</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
 
         {/* Footer / Logout */}
@@ -146,6 +175,49 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: COLORS.primary,
     fontWeight: '700',
+  },
+  titaniumItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 4,
+    marginTop: 4,
+    backgroundColor: 'rgba(193,160,70,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(193,160,70,0.25)',
+  },
+  titaniumItemActive: {
+    backgroundColor: 'rgba(193,160,70,0.18)',
+    borderColor: 'rgba(193,160,70,0.5)',
+  },
+  titaniumLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titaniumLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#c1a046',
+  },
+  titaniumBadge: {
+    backgroundColor: '#c1a046',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  titaniumBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  adminItem: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(193,160,70,0.15)',
+    marginTop: 4,
   },
   footer: {
     padding: 16,

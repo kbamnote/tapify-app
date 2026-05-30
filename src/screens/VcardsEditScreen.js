@@ -808,7 +808,7 @@ export default function VcardsEditScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>vCard Builder</Text>
+        <Text style={styles.sectionTitle}>Card Builder</Text>
         {previewUrl ? (
           <TouchableOpacity 
             style={styles.previewBtn} 

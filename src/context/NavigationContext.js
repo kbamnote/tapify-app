@@ -31,13 +31,30 @@ export function NavigationProvider({ children }) {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
-      
-      setUser(response.data?.user || response.user);
+
+      // After login, fetch full user profile (includes titanium, subscription, vcard)
+      const meResponse = await fetchApi('/api/me.php');
+      if (meResponse.success && meResponse.data?.user) {
+        setUser(meResponse.data.user);
+      } else {
+        setUser(response.data?.user || response.user);
+      }
+
       setCurrentScreen('dashboard');
       return { success: true };
     } catch (error) {
       return { success: false, message: error.message };
     }
+  };
+
+  // Re-fetch the current user from the server (call this after admin changes titanium status)
+  const refreshUser = async () => {
+    try {
+      const response = await fetchApi('/api/me.php');
+      if (response.success && response.data?.user) {
+        setUser(response.data.user);
+      }
+    } catch (_) {}
   };
 
   const logout = () => {
@@ -55,7 +72,7 @@ export function NavigationProvider({ children }) {
 
   return (
     <NavigationContext.Provider
-      value={{ currentScreen, params, user, setUser, sidebarOpen, setSidebarOpen, login, logout, navigate }}
+      value={{ currentScreen, params, user, setUser, sidebarOpen, setSidebarOpen, login, logout, navigate, refreshUser }}
     >
       {children}
     </NavigationContext.Provider>

@@ -27,6 +27,8 @@ import DesignCustomizeScreen from './src/screens/DesignCustomizeScreen';
 import ReviewsScreen from './src/screens/ReviewsScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import BusinessesScreen from './src/screens/BusinessesScreen';
+import TitaniumScreen from './src/screens/TitaniumScreen';
+import AdminTitaniumScreen from './src/screens/AdminTitaniumScreen';
 
 // Components
 import Header from './src/components/Header';
@@ -68,6 +70,10 @@ function ScreenRenderer() {
       return <NotificationsScreen />;
     case 'businesses':
       return <BusinessesScreen />;
+    case 'titanium':
+      return <TitaniumScreen />;
+    case 'admin-titanium':
+      return <AdminTitaniumScreen />;
     default:
       return <DashboardScreen />;
   }
@@ -106,14 +112,16 @@ function MainLayout() {
       case 'inquiries': return 'Inquiries';
       case 'profile': return 'Profile Settings';
       case 'settings': return 'Platform Settings';
-      case 'vcards-edit': return 'Edit vCard';
+      case 'vcards-edit': return 'Edit';
       case 'whatsapp-stores': return 'Web Store';
       case 'whatsapp-orders': return 'Web Orders';
       case 'my-designs': return 'My Designs';
       case 'design-customize': return 'Customize Design';
       case 'reviews-funnel': return 'Reviews Funnel';
       case 'notifications': return 'Notification Center';
-      case 'businesses':    return 'Business Directory';
+      case 'businesses':      return 'Business Directory';
+      case 'titanium':        return '♛ Titanium Member';
+      case 'admin-titanium':  return 'Manage Titanium Members';
       default: return 'Tapify';
     }
   };

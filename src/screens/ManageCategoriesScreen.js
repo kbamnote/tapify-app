@@ -17,12 +17,17 @@ export default function ManageCategoriesScreen() {
 
   // Detail View State
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [subCategories, setSubCategories] = useState([]);
+  const [loadingSubCats, setLoadingSubCats] = useState(false);
+  const [activeSubCat, setActiveSubCat] = useState(null); // null = showing parent content
+
+  // Content State
   const [categoryContent, setCategoryContent] = useState([]);
   const [loadingContent, setLoadingContent] = useState(false);
 
   // Add Content State
   const [showAddContent, setShowAddContent] = useState(false);
-  const [contentType, setContentType] = useState('text'); // 'text', 'image', 'mixed'
+  const [contentType, setContentType] = useState('text');
   const [textContent, setTextContent] = useState('');
   const [contentImage, setContentImage] = useState(null);
   const [addingContent, setAddingContent] = useState(false);
@@ -61,23 +66,16 @@ export default function ManageCategoriesScreen() {
     if (!newCatName || !newCatImage) {
       return Alert.alert('Error', 'Please provide a name and image');
     }
-    
     try {
       setCreating(true);
       const formData = new FormData();
       formData.append('name', newCatName);
-      formData.append('image', {
-        uri: newCatImage.uri,
-        name: 'cat.jpg',
-        type: 'image/jpeg'
-      });
+      formData.append('image', { uri: newCatImage.uri, name: 'cat.jpg', type: 'image/jpeg' });
 
       const res = await fetchApi('/api/categories/create.php', {
         method: 'POST',
         body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (res.success) {
@@ -96,11 +94,24 @@ export default function ManageCategoriesScreen() {
     }
   };
 
-  const openCategory = async (cat) => {
-    setSelectedCategory(cat);
+  const loadSubCategories = async (catId) => {
+    setLoadingSubCats(true);
     try {
-      setLoadingContent(true);
-      const res = await fetchApi(`/api/categories/content/list.php?category_id=${cat.id}`);
+      const res = await fetchApi(`/api/categories/list.php?parent_id=${catId}`);
+      if (res.success && res.data) {
+        setSubCategories(res.data.categories || []);
+      }
+    } catch (error) {
+      // sub-categories are optional, fail silently
+    } finally {
+      setLoadingSubCats(false);
+    }
+  };
+
+  const loadContent = async (catId) => {
+    setLoadingContent(true);
+    try {
+      const res = await fetchApi(`/api/categories/content/list.php?category_id=${catId}`);
       if (res.success && res.data) {
         setCategoryContent(res.data.content || []);
       }
@@ -111,6 +122,23 @@ export default function ManageCategoriesScreen() {
     }
   };
 
+  const openCategory = async (cat) => {
+    setSelectedCategory(cat);
+    setActiveSubCat(null);
+    setCategoryContent([]);
+    setSubCategories([]);
+    loadContent(cat.id);
+    loadSubCategories(cat.id);
+  };
+
+  const openSubCategory = (subCat) => {
+    setActiveSubCat(subCat);
+    setCategoryContent([]);
+    loadContent(subCat.id);
+  };
+
+  const activeCatId = activeSubCat?.id ?? selectedCategory?.id;
+
   const handleAddContent = async () => {
     if (contentType === 'text' && !textContent) return Alert.alert('Error', 'Text is required');
     if (contentType === 'image' && !contentImage) return Alert.alert('Error', 'Image is required');
@@ -119,24 +147,17 @@ export default function ManageCategoriesScreen() {
     try {
       setAddingContent(true);
       const formData = new FormData();
-      formData.append('category_id', selectedCategory.id);
+      formData.append('category_id', activeCatId);
       formData.append('type', contentType);
-      
       if (textContent) formData.append('text_content', textContent);
       if (contentImage) {
-        formData.append('image', {
-          uri: contentImage.uri,
-          name: 'content.jpg',
-          type: 'image/jpeg'
-        });
+        formData.append('image', { uri: contentImage.uri, name: 'content.jpg', type: 'image/jpeg' });
       }
 
       const res = await fetchApi('/api/categories/content/add.php', {
         method: 'POST',
         body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (res.success) {
@@ -144,7 +165,7 @@ export default function ManageCategoriesScreen() {
         setShowAddContent(false);
         setTextContent('');
         setContentImage(null);
-        openCategory(selectedCategory); // Reload content
+        loadContent(activeCatId);
       } else {
         Alert.alert('Error', res.message || 'Failed to add content');
       }
@@ -155,7 +176,7 @@ export default function ManageCategoriesScreen() {
     }
   };
 
-  const getFullUrl = (path) => path ? `${API_BASE}${path}` : null;
+  const getFullUrl = (path) => path ? (path.startsWith('http') ? path : `${API_BASE}${path}`) : null;
 
   return (
     <View style={styles.container}>
@@ -191,7 +212,6 @@ export default function ManageCategoriesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>New Category</Text>
-            
             <TouchableOpacity style={styles.imagePicker} onPress={() => pickImage(setNewCatImage)}>
               {newCatImage ? (
                 <Image source={{ uri: newCatImage.uri }} style={styles.pickedImage} />
@@ -199,14 +219,12 @@ export default function ManageCategoriesScreen() {
                 <Text style={styles.imagePickerText}>📷 Select Square Image</Text>
               )}
             </TouchableOpacity>
-
-            <TextInput 
-              style={styles.input} 
-              placeholder="Category Name (e.g. Motivation)" 
+            <TextInput
+              style={styles.input}
+              placeholder="Category Name (e.g. Motivation)"
               value={newCatName}
               onChangeText={setNewCatName}
             />
-
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddCategory(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -219,40 +237,72 @@ export default function ManageCategoriesScreen() {
         </View>
       </Modal>
 
-      {/* Category Detail Modal (Manage Content) */}
+      {/* Category Detail Modal */}
       <Modal visible={!!selectedCategory} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { height: '90%', width: '95%' }]}>
+
+            {/* Modal header with optional back-to-parent breadcrumb */}
             <View style={styles.detailHeader}>
-              <Text style={styles.modalTitle}>{selectedCategory?.name}</Text>
-              <TouchableOpacity onPress={() => setSelectedCategory(null)} style={{ padding: 5 }}>
+              <View style={{ flex: 1 }}>
+                {activeSubCat ? (
+                  <TouchableOpacity onPress={() => { setActiveSubCat(null); loadContent(selectedCategory.id); }} style={{ marginBottom: 4 }}>
+                    <Text style={{ fontSize: 12, color: COLORS.primary }}>← {selectedCategory?.name}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <Text style={styles.modalTitle} numberOfLines={1}>
+                  {activeSubCat ? activeSubCat.name : selectedCategory?.name}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => { setSelectedCategory(null); setActiveSubCat(null); }} style={{ padding: 5 }}>
                 <Text style={{ fontSize: 20, color: COLORS.textMuted }}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {loadingContent ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ flex: 1 }} />
-            ) : (
-              <ScrollView style={{ flex: 1 }}>
-                {categoryContent.length === 0 ? (
-                  <Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textMuted }}>No content inside this category.</Text>
-                ) : (
-                  categoryContent.map(item => (
-                    <GlassCard key={item.id} style={{ marginBottom: 15 }}>
-                      {item.type !== 'text' && item.image_url && (
-                        <Image source={{ uri: getFullUrl(item.image_url) }} style={styles.contentImage} />
-                      )}
-                      {item.type !== 'image' && item.text_content && (
-                        <Text style={styles.contentText}>{item.text_content}</Text>
-                      )}
-                      <Text style={styles.contentMeta}>Type: {item.type.toUpperCase()}</Text>
-                    </GlassCard>
-                  ))
-                )}
-              </ScrollView>
-            )}
+            <ScrollView style={{ flex: 1 }}>
+              {/* Sub-categories row — only shown at parent level */}
+              {!activeSubCat && (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={styles.sectionLabel}>Sub-categories</Text>
+                  {loadingSubCats ? (
+                    <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 8 }} />
+                  ) : subCategories.length === 0 ? (
+                    <Text style={styles.emptyHint}>No sub-categories</Text>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 4, gap: 10 }}>
+                      {subCategories.map(sub => (
+                        <TouchableOpacity key={sub.id} style={styles.subCatChip} onPress={() => openSubCategory(sub)}>
+                          <Image source={{ uri: getFullUrl(sub.image_url) }} style={styles.subCatImage} />
+                          <Text style={styles.subCatLabel} numberOfLines={1}>{sub.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
+                  <View style={styles.divider} />
+                </View>
+              )}
 
-            {/* Floating Options to Add Content */}
+              {/* Content list */}
+              {loadingContent ? (
+                <ActivityIndicator size="large" color={COLORS.primary} style={{ flex: 1, marginTop: 20 }} />
+              ) : categoryContent.length === 0 ? (
+                <Text style={{ textAlign: 'center', marginTop: 20, color: COLORS.textMuted }}>No content inside this category.</Text>
+              ) : (
+                categoryContent.map(item => (
+                  <GlassCard key={item.id} style={{ marginBottom: 15 }}>
+                    {item.type !== 'text' && item.image_url && (
+                      <Image source={{ uri: getFullUrl(item.image_url) }} style={styles.contentImage} />
+                    )}
+                    {item.type !== 'image' && item.text_content && (
+                      <Text style={styles.contentText}>{item.text_content}</Text>
+                    )}
+                    <Text style={styles.contentMeta}>Type: {item.type.toUpperCase()}</Text>
+                  </GlassCard>
+                ))
+              )}
+            </ScrollView>
+
+            {/* Add content controls */}
             {!showAddContent ? (
               <View style={styles.addContentRow}>
                 <TouchableOpacity style={styles.actionPill} onPress={() => { setContentType('text'); setShowAddContent(true); }}>
@@ -268,7 +318,6 @@ export default function ManageCategoriesScreen() {
             ) : (
               <View style={styles.addContentForm}>
                 <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>Adding {contentType.toUpperCase()}</Text>
-                
                 {(contentType === 'image' || contentType === 'mixed') && (
                   <TouchableOpacity style={styles.imagePicker} onPress={() => pickImage(setContentImage)}>
                     {contentImage ? (
@@ -278,17 +327,15 @@ export default function ManageCategoriesScreen() {
                     )}
                   </TouchableOpacity>
                 )}
-
                 {(contentType === 'text' || contentType === 'mixed') && (
-                  <TextInput 
-                    style={[styles.input, { height: 80, textAlignVertical: 'top' }]} 
-                    placeholder="Enter text content..." 
+                  <TextInput
+                    style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                    placeholder="Enter text content..."
                     multiline
                     value={textContent}
                     onChangeText={setTextContent}
                   />
                 )}
-
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddContent(false)}>
                     <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -302,16 +349,12 @@ export default function ManageCategoriesScreen() {
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -322,28 +365,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  addBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  addBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  grid: {
-    padding: 15,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
+  title: { fontSize: 22, fontWeight: '800', color: COLORS.primary },
+  addBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  grid: { padding: 15, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   catCard: {
     width: '48%',
     backgroundColor: '#fff',
@@ -356,26 +381,10 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-  catImage: {
-    width: '100%',
-    aspectRatio: 1,
-    backgroundColor: '#f3f4f6',
-  },
-  catLabelBox: {
-    padding: 12,
-    alignItems: 'center',
-  },
-  catLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  catImage: { width: '100%', aspectRatio: 1, backgroundColor: '#f3f4f6' },
+  catLabelBox: { padding: 12, alignItems: 'center' },
+  catLabel: { fontSize: 15, fontWeight: '700', color: COLORS.primary },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: {
     width: '90%',
     backgroundColor: '#fff',
@@ -387,21 +396,25 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.primary,
-    marginBottom: 15,
-  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: COLORS.primary, marginBottom: 15 },
   detailHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
     paddingBottom: 10,
     marginBottom: 15,
   },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: COLORS.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  emptyHint: { fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: 8 },
+  divider: { height: 1, backgroundColor: '#f3f4f6', marginTop: 12 },
+  subCatChip: {
+    alignItems: 'center',
+    width: 80,
+  },
+  subCatImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#f3f4f6', marginBottom: 4 },
+  subCatLabel: { fontSize: 11, fontWeight: '600', color: COLORS.primary, textAlign: 'center' },
   imagePicker: {
     width: '100%',
     height: 150,
@@ -415,89 +428,19 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     overflow: 'hidden',
   },
-  imagePickerText: {
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  pickedImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    padding: 15,
-    fontSize: 16,
-    marginBottom: 15,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  cancelBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-  },
-  cancelBtnText: {
-    color: COLORS.textMuted,
-    fontWeight: '700',
-  },
-  submitBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary,
-  },
-  submitBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  contentImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 10,
-    resizeMode: 'cover',
-  },
-  contentText: {
-    fontSize: 15,
-    color: COLORS.text,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  contentMeta: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    textAlign: 'right',
-  },
-  addContentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  actionPill: {
-    flex: 1,
-    backgroundColor: COLORS.accent + '20',
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  actionPillText: {
-    color: COLORS.accent,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  addContentForm: {
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  }
+  imagePickerText: { color: COLORS.textMuted, fontWeight: '600' },
+  pickedImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 15, fontSize: 16, marginBottom: 15 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  cancelBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#f3f4f6' },
+  cancelBtnText: { color: COLORS.textMuted, fontWeight: '700' },
+  submitBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: COLORS.primary },
+  submitBtnText: { color: '#fff', fontWeight: '700' },
+  contentImage: { width: '100%', height: 200, borderRadius: 10, marginBottom: 10, resizeMode: 'cover' },
+  contentText: { fontSize: 15, color: COLORS.text, lineHeight: 22, marginBottom: 8 },
+  contentMeta: { fontSize: 11, color: COLORS.textMuted, textAlign: 'right' },
+  addContentRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 15, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
+  actionPill: { flex: 1, backgroundColor: COLORS.accent + '20', paddingVertical: 12, marginHorizontal: 4, borderRadius: 10, alignItems: 'center' },
+  actionPillText: { color: COLORS.accent, fontWeight: '700', fontSize: 14 },
+  addContentForm: { paddingTop: 15, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
 });

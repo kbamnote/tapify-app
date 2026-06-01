@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   splashLogo: {
-    width: 120,
+    width: 180,
     height: 120,
   },
 });

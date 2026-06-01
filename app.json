@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tapify",
     "slug": "tapify",
-    "version": "1.1.6",
+    "version": "1.1.7",
     "scheme": "tapifapp",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
@@ -19,7 +19,7 @@
       "package": "com.kbamnote.tapifapp",
       "icon": "./assets/app-icon.png",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 40,
+      "versionCode": 42,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",

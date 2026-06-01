@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import { BackHandler, ToastAndroid, Platform } from 'react-native';
 
 import { fetchApi } from '../config';
 
@@ -9,6 +10,8 @@ export function NavigationProvider({ children }) {
   const [params, setParams] = useState(null);
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const historyStack = useRef([]);
+  const lastBackPress = useRef(0);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -58,21 +61,67 @@ export function NavigationProvider({ children }) {
   };
 
   const logout = () => {
-    // In the future, we could call /api/logout.php here
+    historyStack.current = [];
     setUser(null);
     setCurrentScreen('login');
     setSidebarOpen(false);
   };
 
   const navigate = (screen, screenParams = null) => {
-    setCurrentScreen(screen);
+    setCurrentScreen(prev => {
+      // Don't push duplicates or login onto the history stack
+      if (prev !== screen && prev !== 'login') {
+        historyStack.current.push({ screen: prev, params });
+      }
+      return screen;
+    });
     setParams(screenParams);
     setSidebarOpen(false);
   };
 
+  const goBack = () => {
+    if (historyStack.current.length > 0) {
+      const previous = historyStack.current.pop();
+      setCurrentScreen(previous.screen);
+      setParams(previous.params);
+      setSidebarOpen(false);
+      return true; // handled
+    }
+    return false; // let OS handle (exit app)
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const onBackPress = () => {
+      // Close sidebar first if open
+      if (sidebarOpen) {
+        setSidebarOpen(false);
+        return true;
+      }
+
+      if (historyStack.current.length > 0) {
+        goBack();
+        return true;
+      }
+
+      // On root screen — show "press again to exit" toast
+      const now = Date.now();
+      if (now - lastBackPress.current < 2000) {
+        return false; // exit app
+      }
+      lastBackPress.current = now;
+      ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [sidebarOpen]);
+
   return (
     <NavigationContext.Provider
-      value={{ currentScreen, params, user, setUser, sidebarOpen, setSidebarOpen, login, logout, navigate, refreshUser }}
+      value={{ currentScreen, params, user, setUser, sidebarOpen, setSidebarOpen, login, logout, navigate, goBack, refreshUser }}
     >
       {children}
     </NavigationContext.Provider>

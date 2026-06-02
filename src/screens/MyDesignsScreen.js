@@ -24,6 +24,7 @@ export default function MyDesignsScreen() {
   const [activeTab, setActiveTab] = useState(params?.returnToTab || 'home'); 
   const [selectedCategory, setSelectedCategory] = useState(params?.returnToCategory || null);
   const [selectedGlobalCategory, setSelectedGlobalCategory] = useState(params?.returnToGlobalCategory || null);
+  const [selectedGlobalSubCategory, setSelectedGlobalSubCategory] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -34,6 +35,7 @@ export default function MyDesignsScreen() {
 
   // Live data for new Categories feature
   const [globalCategories, setGlobalCategories] = useState([]);
+  const [globalSubCategories, setGlobalSubCategories] = useState([]);
   const [globalCategoryContent, setGlobalCategoryContent] = useState([]);
 
   // Loading states
@@ -55,10 +57,12 @@ export default function MyDesignsScreen() {
       loadDesigns(selectedCategory);
     } else if (activeTab === 'saved') {
       loadSavedDesigns();
+    } else if (activeTab === 'categories' && selectedGlobalSubCategory !== null) {
+      loadGlobalCategoryContent(selectedGlobalSubCategory);
     } else if (activeTab === 'categories' && selectedGlobalCategory !== null) {
-      loadGlobalCategoryContent(selectedGlobalCategory);
+      loadGlobalSubCategories(selectedGlobalCategory);
     }
-  }, [activeTab, selectedCategory, selectedGlobalCategory]);
+  }, [activeTab, selectedCategory, selectedGlobalCategory, selectedGlobalSubCategory]);
 
   const loadCategories = async () => {
     try {
@@ -86,6 +90,28 @@ export default function MyDesignsScreen() {
       }
     } catch (e) {
       console.log('Failed to load global categories', e);
+    }
+  };
+
+  const loadGlobalSubCategories = async (parentId) => {
+    try {
+      setLoadingGlobal(true);
+      setGlobalSubCategories([]);
+      setGlobalCategoryContent([]);
+      const res = await fetchApi(`/api/categories/list.php?parent_id=${parentId}`);
+      if (res.success && res.data) {
+        const subs = res.data.categories || [];
+        setGlobalSubCategories(subs);
+        if (subs.length === 0) {
+          // No sub-categories — load content directly
+          await loadGlobalCategoryContent(parentId);
+          return;
+        }
+      }
+    } catch (e) {
+      setGlobalSubCategories([]);
+    } finally {
+      setLoadingGlobal(false);
     }
   };
 
@@ -364,10 +390,10 @@ export default function MyDesignsScreen() {
                     <TouchableOpacity
                       key={cat.id}
                       style={styles.newGridCard}
-                      onPress={() => setSelectedGlobalCategory(cat.id)}
+                      onPress={() => { setSelectedGlobalSubCategory(null); setSelectedGlobalCategory(cat.id); }}
                       activeOpacity={0.85}
                     >
-                      <Image source={{ uri: cat.image_url ? `${API_BASE}${cat.image_url}` : null }} style={styles.newGridCardImage} />
+                      <Image source={{ uri: cat.image_url ? (cat.image_url.startsWith('http') ? cat.image_url : `${API_BASE}${cat.image_url}`) : null }} style={styles.newGridCardImage} />
                       <View style={styles.newGridCardLabelContainer}>
                         <Text style={styles.newGridCardText}>{cat.name}</Text>
                       </View>
@@ -392,17 +418,56 @@ export default function MyDesignsScreen() {
         {/* Global Category Content Viewer */}
         {activeTab === 'categories' && selectedGlobalCategory !== null && (
           <>
-            <TouchableOpacity style={styles.backButtonRow} onPress={() => setSelectedGlobalCategory(null)}>
-              <Text style={styles.backButtonText}>← Back to Categories</Text>
+            <TouchableOpacity
+              style={styles.backButtonRow}
+              onPress={() => {
+                if (selectedGlobalSubCategory !== null) {
+                  setSelectedGlobalSubCategory(null);
+                } else {
+                  setSelectedGlobalCategory(null);
+                  setGlobalSubCategories([]);
+                  setGlobalCategoryContent([]);
+                }
+              }}
+            >
+              <Text style={styles.backButtonText}>
+                {selectedGlobalSubCategory !== null ? '← Back to Sub-categories' : '← Back to Categories'}
+              </Text>
             </TouchableOpacity>
 
             {loadingGlobal ? (
               <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
+            ) : selectedGlobalSubCategory === null && globalSubCategories.length > 0 ? (
+              // Show sub-categories grid
+              <View style={styles.gridContainer}>
+                <View style={styles.categoryGrid}>
+                  {globalSubCategories.map((sub) => (
+                    <TouchableOpacity
+                      key={sub.id}
+                      style={styles.newGridCard}
+                      onPress={() => setSelectedGlobalSubCategory(sub.id)}
+                      activeOpacity={0.85}
+                    >
+                      <Image
+                        source={{ uri: sub.image_url ? (sub.image_url.startsWith('http') ? sub.image_url : `${API_BASE}${sub.image_url}`) : null }}
+                        style={styles.newGridCardImage}
+                      />
+                      <View style={styles.newGridCardLabelContainer}>
+                        <Text style={styles.newGridCardText}>{sub.name}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             ) : globalCategoryContent.length > 0 ? (
               globalCategoryContent.map(item => (
                 <GlassCard key={item.id} style={{ marginBottom: 15, padding: 15 }}>
                   {item.type !== 'text' && item.image_url && (
-                    <Image source={{ uri: `${API_BASE}${item.image_url}` }} style={{ width: '100%', height: 250, borderRadius: 10, marginBottom: 10 }} resizeMode="cover" />
+                    <Image
+                      source={{ uri: item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}` }}
+                      style={{ width: '100%', height: 250, borderRadius: 10, marginBottom: 10 }}
+                      resizeMode="cover"
+                    />
                   )}
                   {item.type !== 'image' && item.text_content && (
                     <Text style={{ fontSize: 15, color: COLORS.text, lineHeight: 22, fontWeight: '500' }}>{item.text_content}</Text>
@@ -410,7 +475,7 @@ export default function MyDesignsScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, alignItems: 'center' }}>
                     <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{new Date(item.created_at).toLocaleDateString()}</Text>
                     <TouchableOpacity style={styles.catContentActionBtn} onPress={() => {
-                        Share.share({ message: item.text_content || 'Check out this post from Tapify!', url: item.image_url ? `${API_BASE}${item.image_url}` : undefined });
+                        Share.share({ message: item.text_content || 'Check out this post from Tapify!', url: item.image_url ? (item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}`) : undefined });
                     }}>
                       <Text style={styles.catContentActionText}>📤 Share</Text>
                     </TouchableOpacity>
@@ -550,7 +615,7 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 40 },
   cardContainer: { marginBottom: 16 },
   card: { overflow: 'hidden', padding: 0 },
-  cardImage: { width: '100%', height: 180, backgroundColor: COLORS.border },
+  cardImage: { width: '100%', aspectRatio: 1, backgroundColor: COLORS.border },
   cardBody: { padding: 16 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.primary, flex: 1 },

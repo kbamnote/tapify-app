@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -45,6 +45,19 @@ export default function MyDesignsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [catError, setCatError] = useState(null);
 
+  // Scroll tracking
+  const scrollViewRef = useRef(null);
+  const scrollYRef = useRef(0);
+  const savedScrollY = useRef({
+    home: 0,
+    categories: 0,
+    subCategories: 0
+  });
+
+  const handleScroll = (event) => {
+    scrollYRef.current = event.nativeEvent.contentOffset.y;
+  };
+
   // ─── Load categories on mount ────────────────────────────────────────────────
   useEffect(() => {
     loadCategories();
@@ -59,6 +72,7 @@ export default function MyDesignsScreen() {
       loadSavedDesigns();
     } else if (activeTab === 'categories' && selectedGlobalSubCategory !== null) {
       loadGlobalCategoryContent(selectedGlobalSubCategory);
+      loadDesigns(selectedGlobalSubCategory, true);
     } else if (activeTab === 'categories' && selectedGlobalCategory !== null) {
       loadGlobalSubCategories(selectedGlobalCategory);
     }
@@ -105,6 +119,7 @@ export default function MyDesignsScreen() {
         if (subs.length === 0) {
           // No sub-categories — load content directly
           await loadGlobalCategoryContent(parentId);
+          loadDesigns(parentId, true);
           return;
         }
       }
@@ -129,10 +144,13 @@ export default function MyDesignsScreen() {
     }
   };
 
-  const loadDesigns = async (categoryId) => {
+  const loadDesigns = async (id, isContentCategory = false) => {
     try {
       setLoadingDesigns(true);
-      const res = await fetchApi(`/api/designs/list.php?category_id=${categoryId}`);
+      const endpoint = isContentCategory 
+        ? `/api/designs/list.php?content_category_id=${id}`
+        : `/api/designs/list.php?category_id=${id}`;
+      const res = await fetchApi(endpoint);
       if (res.success && res.data) {
         setDesigns(res.data.designs || []);
         // Merge saved IDs from response (so save state is accurate)
@@ -175,6 +193,7 @@ export default function MyDesignsScreen() {
     setDesigns([]);
     setGlobalCategoryContent([]);
     setSearchQuery('');
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
   const toggleSave = async (designId) => {
@@ -327,6 +346,9 @@ export default function MyDesignsScreen() {
 
       {/* Scrollable Content */}
       <ScrollView
+        ref={scrollViewRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
@@ -347,7 +369,11 @@ export default function MyDesignsScreen() {
                     <TouchableOpacity
                       key={cat.id}
                       style={styles.newGridCard}
-                      onPress={() => setSelectedCategory(cat.id)}
+                      onPress={() => {
+                        savedScrollY.current.home = scrollYRef.current;
+                        setSelectedCategory(cat.id);
+                        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+                      }}
                       activeOpacity={0.85}
                     >
                       {cat.image_url ? (
@@ -390,7 +416,12 @@ export default function MyDesignsScreen() {
                     <TouchableOpacity
                       key={cat.id}
                       style={styles.newGridCard}
-                      onPress={() => { setSelectedGlobalSubCategory(null); setSelectedGlobalCategory(cat.id); }}
+                      onPress={() => { 
+                        savedScrollY.current.categories = scrollYRef.current;
+                        setSelectedGlobalSubCategory(null); 
+                        setSelectedGlobalCategory(cat.id); 
+                        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+                      }}
                       activeOpacity={0.85}
                     >
                       <Image source={{ uri: cat.image_url ? (cat.image_url.startsWith('http') ? cat.image_url : `${API_BASE}${cat.image_url}`) : null }} style={styles.newGridCardImage} />
@@ -423,10 +454,20 @@ export default function MyDesignsScreen() {
               onPress={() => {
                 if (selectedGlobalSubCategory !== null) {
                   setSelectedGlobalSubCategory(null);
+                  setTimeout(() => {
+                    requestAnimationFrame(() => {
+                      scrollViewRef.current?.scrollTo({ y: savedScrollY.current.subCategories, animated: false });
+                    });
+                  }, 200);
                 } else {
                   setSelectedGlobalCategory(null);
                   setGlobalSubCategories([]);
                   setGlobalCategoryContent([]);
+                  setTimeout(() => {
+                    requestAnimationFrame(() => {
+                      scrollViewRef.current?.scrollTo({ y: savedScrollY.current.categories, animated: false });
+                    });
+                  }, 200);
                 }
               }}
             >
@@ -445,7 +486,11 @@ export default function MyDesignsScreen() {
                     <TouchableOpacity
                       key={sub.id}
                       style={styles.newGridCard}
-                      onPress={() => setSelectedGlobalSubCategory(sub.id)}
+                      onPress={() => {
+                        savedScrollY.current.subCategories = scrollYRef.current;
+                        setSelectedGlobalSubCategory(sub.id);
+                        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+                      }}
                       activeOpacity={0.85}
                     >
                       <Image
@@ -482,26 +527,36 @@ export default function MyDesignsScreen() {
                   </View>
                 </GlassCard>
               ))
-            ) : (
+            ) : globalCategoryContent.length === 0 && designs.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>📭</Text>
                 <Text style={styles.emptyTitle}>No Content Found</Text>
                 <Text style={styles.emptySubtitle}>There is no content in this category yet.</Text>
               </View>
-            )}
+            ) : null}
           </>
         )}
 
-        {/* Design List (Home / Saved) */}
-        {(activeTab === 'saved' || (activeTab === 'home' && selectedCategory !== null)) && (
+        {/* Design List (Home / Saved / Categories) */}
+        {(activeTab === 'saved' || 
+          (activeTab === 'home' && selectedCategory !== null) ||
+          (activeTab === 'categories' && (selectedGlobalSubCategory !== null || (selectedGlobalCategory !== null && globalSubCategories.length === 0)))
+        ) && (
           <>
             {activeTab === 'home' && selectedCategory !== null && (
-              <TouchableOpacity style={styles.backButtonRow} onPress={() => setSelectedCategory(null)}>
+              <TouchableOpacity style={styles.backButtonRow} onPress={() => {
+                setSelectedCategory(null);
+                setTimeout(() => {
+                  requestAnimationFrame(() => {
+                    scrollViewRef.current?.scrollTo({ y: savedScrollY.current.home, animated: false });
+                  });
+                }, 200);
+              }}>
                 <Text style={styles.backButtonText}>← Back to Home Categories</Text>
               </TouchableOpacity>
             )}
 
-            {loadingDesigns ? (
+            {loadingDesigns && !loadingGlobal ? (
               <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
             ) : designs.length > 0 ? (
               designs.map((design) => renderDesignCard(design))

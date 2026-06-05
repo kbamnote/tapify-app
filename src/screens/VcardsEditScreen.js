@@ -52,6 +52,7 @@ const TABS = [
   { id: 'features', label: 'Features' },
   { id: 'social', label: 'Social Links' },
   { id: 'business', label: 'Business Hours' },
+  { id: 'services', label: 'Services' },
   { id: 'products', label: 'Products' },
   { id: 'galleries', label: 'Galleries' },
   { id: 'testimonials', label: 'Testimonials' },
@@ -351,7 +352,7 @@ export default function VcardsEditScreen() {
   const [vcardId, setVcardId] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(defaultFormData);
-  const [extras, setExtras] = useState({ products: [], galleries: [], testimonials: [], iframes: [], instagram: [], dynamicQRs: [] });
+  const [extras, setExtras] = useState({ services: [], products: [], galleries: [], testimonials: [], iframes: [], instagram: [], dynamicQRs: [] });
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState(null);
   const [modalData, setModalData] = useState({});
@@ -465,7 +466,8 @@ export default function VcardsEditScreen() {
 
   const loadExtras = async (id) => {
     try {
-      const [prodRes, galRes, testRes, iframeRes, instaRes, qrRes] = await Promise.all([
+      const [svcRes, prodRes, galRes, testRes, iframeRes, instaRes, qrRes] = await Promise.all([
+        fetchApi(`/api/services/list.php?vcard_id=${id}`),
         fetchApi(`/api/products/list.php?vcard_id=${id}`),
         fetchApi(`/api/galleries/list.php?vcard_id=${id}`),
         fetchApi(`/api/testimonials/list.php?vcard_id=${id}`),
@@ -474,6 +476,7 @@ export default function VcardsEditScreen() {
         fetchApi(`/api/dynamic-qr/list.php`)
       ]);
       setExtras({
+        services: svcRes.data?.services || [],
         products: prodRes.data?.products || [],
         galleries: galRes.data?.galleries || [],
         testimonials: testRes.data?.testimonials || [],
@@ -567,6 +570,7 @@ export default function VcardsEditScreen() {
     if (modalType === 'instaembed') endpoint = '/api/instagram/save.php';
     if (modalType === 'gallery') endpoint = '/api/galleries/save.php';
     if (modalType === 'testimonial') endpoint = '/api/testimonials/save.php';
+    if (modalType === 'service') endpoint = '/api/services/save.php';
     if (modalType === 'product') endpoint = '/api/products/save.php';
     if (modalType === 'dynamic_qr') endpoint = '/api/dynamic-qr/save.php';
 
@@ -576,10 +580,10 @@ export default function VcardsEditScreen() {
         body: JSON.stringify(payload)
       });
       if (response.success) {
-        // If product and user picked a new image, upload it now using the product ID
-        if (modalType === 'product' && pendingProductImage) {
-          const productId = response.data?.id || modalData.id;
-          if (productId) {
+        // If product/service and user picked a new image, upload it now using the new ID
+        if ((modalType === 'product' || modalType === 'service') && pendingProductImage) {
+          const targetId = response.data?.id || modalData.id;
+          if (targetId) {
             const fd = new FormData();
             const uri = pendingProductImage;
             const filename = uri.split('/').pop();
@@ -590,8 +594,8 @@ export default function VcardsEditScreen() {
               type: match ? `image/${match[1]}` : 'image/jpeg',
             });
             fd.append('vcard_id', String(vcardId));
-            fd.append('type', 'product');
-            fd.append('target_id', String(productId));
+            fd.append('type', modalType); // 'product' or 'service'
+            fd.append('target_id', String(targetId));
             await fetchApi('/api/uploads/image.php', { method: 'POST', body: fd });
           }
           setPendingProductImage(null);
@@ -617,6 +621,7 @@ export default function VcardsEditScreen() {
           if (type === 'instaembed') endpoint = '/api/instagram/delete.php';
           if (type === 'gallery') endpoint = '/api/galleries/delete.php';
           if (type === 'testimonial') endpoint = '/api/testimonials/delete.php';
+          if (type === 'service') endpoint = '/api/services/delete.php';
           if (type === 'product') endpoint = '/api/products/delete.php';
           if (type === 'dynamic_qr') endpoint = '/api/dynamic-qr/delete.php';
           
@@ -1572,6 +1577,43 @@ export default function VcardsEditScreen() {
           )}
 
           {/* TAB 8: PRODUCTS */}
+          {activeTab === 'services' && (
+            <View>
+              <Text style={styles.tabHeading}>Manage Services</Text>
+              {extras.services.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No services yet.</Text>
+              ) : (
+                extras.services.map(item => (
+                  <View key={item.id} style={[styles.listItemCard, { alignItems: 'flex-start', gap: 10 }]}>
+                    {/* Service thumbnail */}
+                    <TouchableOpacity
+                      onPress={() => pickAndUploadImageFor('service', item.id, () => loadExtras(vcardId))}
+                      style={{ width: 60, height: 60, borderRadius: 10, backgroundColor: COLORS.surface, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    >
+                      {item.image ? (
+                        <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : (
+                        <Text style={{ fontSize: 22 }}>📷</Text>
+                      )}
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listItemTitle}>{item.name}</Text>
+                      {item.service_url ? <Text style={styles.listItemSubtitle} numberOfLines={1}>{item.service_url}</Text> : null}
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>Tap photo to change image</Text>
+                    </View>
+                    <View style={styles.listItemActions}>
+                      <TouchableOpacity onPress={() => openModal('service', item)} style={styles.actionBtn}><Text>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteExtraItem('service', item.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('service', {})}>
+                <Text style={styles.addBtnText}>+ Add Service</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {activeTab === 'products' && (
             <View>
               <Text style={styles.tabHeading}>Manage Products</Text>
@@ -1959,6 +2001,40 @@ export default function VcardsEditScreen() {
                   value={modalData.name || ''} 
                   onChangeText={v => setModalData({...modalData, name: v})} 
                 />
+              )}
+
+              {modalType === 'service' && (
+                <>
+                  {/* Service Image Picker */}
+                  <Text style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6 }}>Service Image</Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose a photo.'); return; }
+                      const res = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsEditing: true, aspect: [1, 1], quality: 0.8,
+                      });
+                      if (!res.canceled && res.assets?.length) setPendingProductImage(res.assets[0].uri);
+                    }}
+                    style={{ width: '100%', height: 140, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.surface, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}
+                  >
+                    {pendingProductImage || modalData.image ? (
+                      <Image
+                        source={{ uri: pendingProductImage || modalData.image }}
+                        style={{ width: '100%', height: '100%', borderRadius: 12 }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={{ alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 28 }}>📷</Text>
+                        <Text style={{ fontSize: 12, color: COLORS.textMuted }}>Tap to choose from gallery</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  <TextInputField label="Service Name *" value={modalData.name || ''} onChangeText={v => setModalData({...modalData, name: v})} />
+                  <TextInputField label="Service URL (optional)" value={modalData.service_url || ''} onChangeText={v => setModalData({...modalData, service_url: v})} />
+                </>
               )}
 
               {modalType === 'product' && (

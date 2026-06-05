@@ -53,6 +53,7 @@ const TABS = [
   { id: 'social', label: 'Social Links' },
   { id: 'business', label: 'Business Hours' },
   { id: 'services', label: 'Services' },
+  { id: 'service_cat', label: 'Service Categories' },
   { id: 'products', label: 'Products' },
   { id: 'galleries', label: 'Galleries' },
   { id: 'testimonials', label: 'Testimonials' },
@@ -352,7 +353,7 @@ export default function VcardsEditScreen() {
   const [vcardId, setVcardId] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(defaultFormData);
-  const [extras, setExtras] = useState({ services: [], products: [], galleries: [], testimonials: [], iframes: [], instagram: [], dynamicQRs: [] });
+  const [extras, setExtras] = useState({ services: [], serviceCategories: [], products: [], galleries: [], testimonials: [], iframes: [], instagram: [], dynamicQRs: [] });
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState(null);
   const [modalData, setModalData] = useState({});
@@ -466,8 +467,9 @@ export default function VcardsEditScreen() {
 
   const loadExtras = async (id) => {
     try {
-      const [svcRes, prodRes, galRes, testRes, iframeRes, instaRes, qrRes] = await Promise.all([
+      const [svcRes, catRes, prodRes, galRes, testRes, iframeRes, instaRes, qrRes] = await Promise.all([
         fetchApi(`/api/services/list.php?vcard_id=${id}`),
+        fetchApi(`/api/service-categories/list.php?vcard_id=${id}`),
         fetchApi(`/api/products/list.php?vcard_id=${id}`),
         fetchApi(`/api/galleries/list.php?vcard_id=${id}`),
         fetchApi(`/api/testimonials/list.php?vcard_id=${id}`),
@@ -477,6 +479,7 @@ export default function VcardsEditScreen() {
       ]);
       setExtras({
         services: svcRes.data?.services || [],
+        serviceCategories: catRes.data?.categories || [],
         products: prodRes.data?.products || [],
         galleries: galRes.data?.galleries || [],
         testimonials: testRes.data?.testimonials || [],
@@ -571,6 +574,8 @@ export default function VcardsEditScreen() {
     if (modalType === 'gallery') endpoint = '/api/galleries/save.php';
     if (modalType === 'testimonial') endpoint = '/api/testimonials/save.php';
     if (modalType === 'service') endpoint = '/api/services/save.php';
+    if (modalType === 'service_cat') endpoint = '/api/service-categories/save.php';
+    if (modalType === 'service_item') endpoint = '/api/service-items/save.php';
     if (modalType === 'product') endpoint = '/api/products/save.php';
     if (modalType === 'dynamic_qr') endpoint = '/api/dynamic-qr/save.php';
 
@@ -580,8 +585,8 @@ export default function VcardsEditScreen() {
         body: JSON.stringify(payload)
       });
       if (response.success) {
-        // If product/service and user picked a new image, upload it now using the new ID
-        if ((modalType === 'product' || modalType === 'service') && pendingProductImage) {
+        // If product/service/service_item and user picked a new image, upload it now using the new ID
+        if ((modalType === 'product' || modalType === 'service' || modalType === 'service_item') && pendingProductImage) {
           const targetId = response.data?.id || modalData.id;
           if (targetId) {
             const fd = new FormData();
@@ -594,7 +599,7 @@ export default function VcardsEditScreen() {
               type: match ? `image/${match[1]}` : 'image/jpeg',
             });
             fd.append('vcard_id', String(vcardId));
-            fd.append('type', modalType); // 'product' or 'service'
+            fd.append('type', modalType === 'service_item' ? 'service_item' : modalType);
             fd.append('target_id', String(targetId));
             await fetchApi('/api/uploads/image.php', { method: 'POST', body: fd });
           }
@@ -622,6 +627,8 @@ export default function VcardsEditScreen() {
           if (type === 'gallery') endpoint = '/api/galleries/delete.php';
           if (type === 'testimonial') endpoint = '/api/testimonials/delete.php';
           if (type === 'service') endpoint = '/api/services/delete.php';
+          if (type === 'service_cat') endpoint = '/api/service-categories/delete.php';
+          if (type === 'service_item') endpoint = '/api/service-items/delete.php';
           if (type === 'product') endpoint = '/api/products/delete.php';
           if (type === 'dynamic_qr') endpoint = '/api/dynamic-qr/delete.php';
           
@@ -1614,6 +1621,61 @@ export default function VcardsEditScreen() {
             </View>
           )}
 
+          {activeTab === 'service_cat' && (
+            <View>
+              <Text style={styles.tabHeading}>Service Categories</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 12 }}>Create a category, then add services (image + name) inside it. Shown as a carousel on your card.</Text>
+              {extras.serviceCategories.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: COLORS.textMuted, marginVertical: 20 }}>No categories yet. Create one below.</Text>
+              ) : (
+                extras.serviceCategories.map(cat => (
+                  <View key={cat.id} style={{ backgroundColor: COLORS.surface, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={{ flex: 1, fontWeight: '700', fontSize: 15, color: COLORS.text }}>{cat.name}</Text>
+                      <TouchableOpacity onPress={() => openModal('service_cat', cat)} style={[styles.actionBtn, { marginRight: 4 }]}><Text>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteExtraItem('service_cat', cat.id)} style={styles.actionBtn}><Text>🗑️</Text></TouchableOpacity>
+                    </View>
+
+                    {(!cat.items || cat.items.length === 0) ? (
+                      <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 8 }}>No services yet.</Text>
+                    ) : (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+                        {cat.items.map(si => (
+                          <View key={si.id} style={{ width: 90, position: 'relative' }}>
+                            <TouchableOpacity onPress={() => openModal('service_item', { ...si, category_id: cat.id })}>
+                              {si.image ? (
+                                <Image source={{ uri: si.public_url || si.image }} style={{ width: 90, height: 90, borderRadius: 10 }} resizeMode="cover" />
+                              ) : (
+                                <View style={{ width: 90, height: 90, borderRadius: 10, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 22 }}>📷</Text></View>
+                              )}
+                              <Text numberOfLines={1} style={{ fontSize: 11, color: COLORS.text, marginTop: 4, textAlign: 'center' }}>{si.name}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => deleteExtraItem('service_item', si.id)}
+                              style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>×</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    <TouchableOpacity
+                      onPress={() => openModal('service_item', { category_id: cat.id })}
+                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: COLORS.primary + '18', borderWidth: 1, borderColor: COLORS.primary + '40', borderStyle: 'dashed' }}
+                    >
+                      <Text style={{ fontSize: 13, color: COLORS.primary, fontWeight: '600' }}>+ Add Service</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+              <TouchableOpacity style={styles.addBtn} onPress={() => openModal('service_cat', {})}>
+                <Text style={styles.addBtnText}>+ Create New Category</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {activeTab === 'products' && (
             <View>
               <Text style={styles.tabHeading}>Manage Products</Text>
@@ -1883,7 +1945,7 @@ export default function VcardsEditScreen() {
             <View style={styles.modalCard}>
             <View style={styles.dobModalHeader}>
               <Text style={styles.dobModalTitle}>
-                {modalData.id ? 'Edit' : 'Add'} {modalType}
+                {modalData.id ? 'Edit' : 'Add'} {({ service_cat: 'Category', service_item: 'Service', dynamic_qr: 'Dynamic QR', instaembed: 'Insta Embed' }[modalType] || modalType)}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Text style={styles.dobModalDone}>Close</Text>
@@ -2001,6 +2063,38 @@ export default function VcardsEditScreen() {
                   value={modalData.name || ''} 
                   onChangeText={v => setModalData({...modalData, name: v})} 
                 />
+              )}
+
+              {modalType === 'service_cat' && (
+                <TextInputField label="Category Name *" value={modalData.name || ''} onChangeText={v => setModalData({ ...modalData, name: v })} />
+              )}
+
+              {modalType === 'service_item' && (
+                <>
+                  <Text style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6 }}>Service Image</Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose a photo.'); return; }
+                      const res = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsEditing: true, aspect: [1, 1], quality: 0.8,
+                      });
+                      if (!res.canceled && res.assets?.length) setPendingProductImage(res.assets[0].uri);
+                    }}
+                    style={{ width: '100%', height: 140, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.surface, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}
+                  >
+                    {pendingProductImage || modalData.image ? (
+                      <Image source={{ uri: pendingProductImage || modalData.public_url || modalData.image }} style={{ width: '100%', height: '100%', borderRadius: 12 }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 28 }}>📷</Text>
+                        <Text style={{ fontSize: 12, color: COLORS.textMuted }}>Tap to choose from gallery</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  <TextInputField label="Service Name *" value={modalData.name || ''} onChangeText={v => setModalData({ ...modalData, name: v })} />
+                </>
               )}
 
               {modalType === 'service' && (

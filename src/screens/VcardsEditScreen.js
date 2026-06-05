@@ -1932,7 +1932,7 @@ export default function VcardsEditScreen() {
                       
                       <ViewShot ref={qrViewRef} options={{ format: 'jpg', quality: 1.0 }} style={{ backgroundColor: '#ffffff', padding: 20, alignItems: 'center', borderRadius: 12 }}>
                         <QRCode
-                          value={`https://tapify-backend-production.up.railway.app/qr/${modalData.short_url}`}
+                          value={`https://app.tapify.co.in/qr/${modalData.short_url}`}
                           size={150}
                           color={modalData.custom_color || '#000000'}
                         />

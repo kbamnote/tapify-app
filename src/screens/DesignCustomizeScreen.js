@@ -86,7 +86,7 @@ export default function DesignCustomizeScreen() {
   const design = params?.design;
 
   // --- State ---
-  const initialLogoUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `https://tapify-backend-production.up.railway.app${user.avatar}`) : null;
+  const initialLogoUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `https://app.tapify.co.in${user.avatar}`) : null;
   const viewRef = useRef(null);
   const [logo, setLogo] = useState({
     url: initialLogoUrl,
@@ -119,7 +119,7 @@ export default function DesignCustomizeScreen() {
       try {
         const response = await fetchApi('/api/me.php');
         if (response.success && response.data?.vcard?.url_alias) {
-          setProfileLink(`https://tapify-backend-production.up.railway.app/${response.data.vcard.url_alias}`);
+          setProfileLink(`https://app.tapify.co.in/${response.data.vcard.url_alias}`);
         }
       } catch (error) {
         console.log('Failed to fetch profile link:', error);

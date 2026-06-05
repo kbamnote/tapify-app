@@ -146,7 +146,7 @@ export default function Header({ title }) {
     }
   }, [user]);
 
-  const liveUrl = vcard ? `https://tapify-backend-production.up.railway.app/${vcard.url_alias}` : '';
+  const liveUrl = vcard ? `https://app.tapify.co.in/${vcard.url_alias}` : '';
   const qrCodeUrl = liveUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(liveUrl)}` : '';
 
   const handleShare = async () => {

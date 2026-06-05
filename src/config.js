@@ -1,4 +1,4 @@
-export const API_BASE = 'https://tapify-backend-production.up.railway.app';
+export const API_BASE = 'https://app.tapify.co.in';
 
 export const fetchApi = async (endpoint, options = {}) => {
   const url = `${API_BASE}${endpoint}`;

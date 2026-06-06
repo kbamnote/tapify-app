@@ -1953,11 +1953,17 @@ export default function VcardsEditScreen() {
             </View>
             <ScrollView style={{ padding: 16 }}>
               {modalType === 'iframe' && (
-                <TextInputField 
-                  label="Iframe URL" 
-                  value={modalData.url || ''} 
-                  onChangeText={v => setModalData({...modalData, url: v})} 
-                />
+                <>
+                  <TextInputField
+                    label="Google Maps / Embed URL"
+                    placeholder="https://www.google.com/maps/embed?pb=..."
+                    value={modalData.url || ''}
+                    onChangeText={v => setModalData({...modalData, url: v})}
+                  />
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: -8, marginBottom: 12, lineHeight: 17 }}>
+                    Tip: In Google Maps open Share → "Embed a map" and paste the link from the {'<iframe src="…">'} snippet. A normal map/share link is auto-converted, but the Embed link is most reliable.
+                  </Text>
+                </>
               )}
               
               {modalType === 'gallery' && (

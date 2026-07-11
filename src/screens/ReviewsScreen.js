@@ -9,20 +9,29 @@ import {
   ActivityIndicator,
   Image,
   Linking,
+  Alert,
 } from 'react-native';
 import { fetchApi } from '../config';
 import { COLORS } from '../theme/colors';
+import { useNavigation } from '../context/NavigationContext';
 
 export default function ReviewsScreen() {
+  const { user } = useNavigation();
   const [loading, setLoading] = useState(true);
+
+  // Staff/Admin state
+  const [isElevated, setIsElevated] = useState(false);
+  const [allFunnels, setAllFunnels] = useState([]);
+  const [selectedFunnel, setSelectedFunnel] = useState(null);
+
+  // Single-funnel state (regular users OR when a staff user selects a funnel)
   const [googleUrl, setGoogleUrl] = useState('');
   const [funnelUrl, setFunnelUrl] = useState('');
   const [analytics, setAnalytics] = useState({ scans: 0, redirects: 0 });
   const [reviews, setReviews] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  // You will need to replace this with your actual React frontend URL deployed domain
-  const REACT_APP_URL = 'https://review-google.vercel.app'; 
+  const REACT_APP_URL = 'https://review-google.vercel.app';
 
   useEffect(() => {
     loadData();
@@ -32,19 +41,20 @@ export default function ReviewsScreen() {
     setLoading(true);
     try {
       const funnelRes = await fetchApi('/api/reviews/manage_funnel.php');
-      if (funnelRes.data) {
-        setGoogleUrl(funnelRes.data.google_review_url);
-        setFunnelUrl(`${REACT_APP_URL}/${funnelRes.data.slug}`);
-      }
 
-      const analyticsRes = await fetchApi('/api/reviews/get_analytics.php');
-      if (analyticsRes.data) {
-        setAnalytics(analyticsRes.data);
-      }
-
-      const reviewsRes = await fetchApi('/api/reviews/get_reviews.php');
-      if (reviewsRes.data) {
-        setReviews(reviewsRes.data);
+      // Staff/Admin get { is_admin: true, funnels: [...] }
+      if (funnelRes.is_admin && funnelRes.funnels) {
+        setIsElevated(true);
+        setAllFunnels(funnelRes.funnels || []);
+      } else {
+        // Regular user gets { data: { slug, google_review_url } }
+        setIsElevated(false);
+        if (funnelRes.data) {
+          setGoogleUrl(funnelRes.data.google_review_url || '');
+          setFunnelUrl(funnelRes.data.slug ? `${REACT_APP_URL}/${funnelRes.data.slug}` : '');
+        }
+        // Load own analytics & reviews
+        await loadOwnAnalyticsAndReviews();
       }
     } catch (e) {
       console.error(e);
@@ -52,20 +62,71 @@ export default function ReviewsScreen() {
     setLoading(false);
   };
 
+  const loadOwnAnalyticsAndReviews = async () => {
+    try {
+      const analyticsRes = await fetchApi('/api/reviews/get_analytics.php');
+      if (analyticsRes.data) setAnalytics(analyticsRes.data);
+
+      const reviewsRes = await fetchApi('/api/reviews/get_reviews.php');
+      if (reviewsRes.data) setReviews(reviewsRes.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // ── Staff/Admin: select a funnel to view details ──
+  const selectFunnel = async (funnel) => {
+    setSelectedFunnel(funnel);
+    setGoogleUrl(funnel.google_review_url || '');
+    setFunnelUrl(funnel.slug ? `${REACT_APP_URL}/${funnel.slug}` : '');
+
+    try {
+      const analyticsRes = await fetchApi(`/api/reviews/get_analytics.php?user_id=${funnel.user_id}`);
+      if (analyticsRes.data) setAnalytics(analyticsRes.data);
+      else setAnalytics({ scans: 0, redirects: 0 });
+
+      const reviewsRes = await fetchApi(`/api/reviews/get_reviews.php?funnel_id=${funnel.id}`);
+      if (reviewsRes.data) setReviews(reviewsRes.data);
+      else setReviews([]);
+    } catch (e) {
+      console.error(e);
+      setAnalytics({ scans: 0, redirects: 0 });
+      setReviews([]);
+    }
+  };
+
+  const handleBack = () => {
+    setSelectedFunnel(null);
+    setGoogleUrl('');
+    setFunnelUrl('');
+    setAnalytics({ scans: 0, redirects: 0 });
+    setReviews([]);
+  };
+
+  // ── Save funnel (works for both regular user & staff editing a selected user) ──
   const handleSave = async () => {
-    if (!googleUrl) return alert('Please enter a Google Review Link');
+    if (!googleUrl) return Alert.alert('Error', 'Please enter a Google Review Link');
     setSaving(true);
     try {
+      const body = { google_review_url: googleUrl };
+      if (isElevated && selectedFunnel) {
+        body.user_id = selectedFunnel.user_id;
+      }
       const res = await fetchApi('/api/reviews/manage_funnel.php', {
         method: 'POST',
-        body: JSON.stringify({ google_review_url: googleUrl }),
+        body: JSON.stringify(body),
       });
       if (res.success) {
-        alert('Funnel saved successfully!');
+        Alert.alert('Success', 'Funnel saved successfully!');
         setFunnelUrl(`${REACT_APP_URL}/${res.slug}`);
+        // Refresh the all-funnels list if staff/admin
+        if (isElevated) {
+          const refreshRes = await fetchApi('/api/reviews/manage_funnel.php');
+          if (refreshRes.funnels) setAllFunnels(refreshRes.funnels);
+        }
       }
     } catch (e) {
-      alert('Failed to save funnel link');
+      Alert.alert('Error', 'Failed to save funnel link');
     }
     setSaving(false);
   };
@@ -78,8 +139,106 @@ export default function ReviewsScreen() {
     );
   }
 
+  // ── Staff/Admin: All Funnels List View ──
+  if (isElevated && !selectedFunnel) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <View style={styles.elevatedHeader}>
+            <Text style={styles.cardTitle}>All Review Funnels</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{allFunnels.length}</Text>
+            </View>
+          </View>
+          <Text style={styles.cardDesc}>
+            Manage review funnels for all users. Tap on any funnel to view details, analytics, and private reviews.
+          </Text>
+        </View>
+
+        {allFunnels.length === 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.noReviews}>No review funnels created yet.</Text>
+          </View>
+        ) : (
+          allFunnels.map((funnel, i) => (
+            <TouchableOpacity
+              key={funnel.id || i}
+              style={styles.funnelCard}
+              onPress={() => selectFunnel(funnel)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.funnelCardHeader}>
+                <View style={styles.funnelOwnerInfo}>
+                  <View style={styles.funnelAvatar}>
+                    <Text style={styles.funnelAvatarText}>
+                      {(funnel.owner_name || funnel.owner_email || '?').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.funnelOwnerName} numberOfLines={1}>
+                      {funnel.owner_name || 'Unknown User'}
+                    </Text>
+                    <Text style={styles.funnelOwnerEmail} numberOfLines={1}>
+                      {funnel.owner_email || '—'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.funnelArrow}>›</Text>
+              </View>
+
+              <View style={styles.funnelStatsRow}>
+                <View style={styles.funnelStat}>
+                  <Text style={styles.funnelStatValue}>{funnel.scans || 0}</Text>
+                  <Text style={styles.funnelStatLabel}>Scans</Text>
+                </View>
+                <View style={styles.funnelStatDivider} />
+                <View style={styles.funnelStat}>
+                  <Text style={styles.funnelStatValue}>{funnel.redirects || 0}</Text>
+                  <Text style={styles.funnelStatLabel}>Redirects</Text>
+                </View>
+                <View style={styles.funnelStatDivider} />
+                <View style={styles.funnelStat}>
+                  <Text style={styles.funnelStatValue}>{funnel.private_reviews || 0}</Text>
+                  <Text style={styles.funnelStatLabel}>Private</Text>
+                </View>
+              </View>
+
+              <View style={styles.funnelSlugRow}>
+                <Text style={styles.funnelSlugLabel}>Slug:</Text>
+                <Text style={styles.funnelSlugValue} numberOfLines={1}>{funnel.slug}</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+    );
+  }
+
+  // ── Detail View (regular user OR staff viewing a selected funnel) ──
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Back button for staff/admin */}
+      {isElevated && selectedFunnel && (
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+          <Text style={styles.backBtnText}>← Back to All Funnels</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Owner info banner for staff/admin */}
+      {isElevated && selectedFunnel && (
+        <View style={styles.ownerBanner}>
+          <View style={styles.ownerBannerAvatar}>
+            <Text style={styles.ownerBannerAvatarText}>
+              {(selectedFunnel.owner_name || '?').charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.ownerBannerName}>{selectedFunnel.owner_name || 'Unknown'}</Text>
+            <Text style={styles.ownerBannerEmail}>{selectedFunnel.owner_email || '—'}</Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Setup Google Review Link</Text>
         <Text style={styles.cardDesc}>
@@ -189,6 +348,172 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  // ── Staff/Admin list view ──
+  elevatedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  countBadge: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  countBadgeText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  funnelCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  funnelCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  funnelOwnerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  funnelAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  funnelAvatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  funnelOwnerName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  funnelOwnerEmail: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+  funnelArrow: {
+    fontSize: 24,
+    color: COLORS.textMuted,
+    fontWeight: '300',
+    paddingLeft: 8,
+  },
+  funnelStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  funnelStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  funnelStatDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: COLORS.border,
+  },
+  funnelStatValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  funnelStatLabel: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  funnelSlugRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  funnelSlugLabel: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  funnelSlugValue: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '500',
+    flex: 1,
+  },
+
+  // ── Back button & owner banner (staff detail view) ──
+  backBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  backBtnText: {
+    fontSize: 15,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  ownerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(21, 62, 63, 0.06)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(21, 62, 63, 0.12)',
+  },
+  ownerBannerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ownerBannerAvatarText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  ownerBannerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  ownerBannerEmail: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 1,
+  },
+
+  // ── Shared styles (single-funnel view) ──
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,

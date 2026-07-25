@@ -9,17 +9,42 @@ const { width } = Dimensions.get('window');
 
 const SWATCH_COLORS = ['#153e3f', '#25D366', '#d19a66', '#000000', '#3b5998', '#ef4444', '#ffffff', '#8e44ad', '#2980b9', '#f1c40f'];
 
+// The only 8 themes offered for the web store (mirrors tapify-frontend/whatsapp-stores-edit.js).
+// A store's data is shared across ALL templates — switching only changes the UI
+// (the whatsapp_stores.template_id column), never the data.
 const STORE_TEMPLATES = [
-  { id: 'default', name: 'Default Store Design' },
-  { id: 'store_template_1', name: 'Beauty Product' },
-  { id: 'store_template_2', name: 'E-Commerce' },
-  { id: 'store_template_3', name: 'Restaurant' },
-  { id: 'store_template_4', name: 'Grocery' },
-  { id: 'store_template_5', name: 'Cloth Store' },
-  { id: 'store_template_6', name: 'Home Decor' },
-  { id: 'store_template_7', name: 'Jewellery' },
-  { id: 'store_template_8', name: 'Travel' },
+  { id: 'store_template_9', name: 'Ethereal Beauty' },
+  { id: 'store_template_10', name: 'Prime Store' },
+  { id: 'store_template_11', name: 'Mahejbani' },
+  { id: 'store_template_12', name: 'Grocery Store' },
+  { id: 'store_template_13', name: 'Cloth Store' },
+  { id: 'store_template_14', name: 'Home Decor' },
+  { id: 'store_template_15', name: 'The Royal Jewellers' },
+  { id: 'store_template_16', name: 'Desi Miles Travel' },
 ];
+
+// Legacy ids a store might still carry in the DB — mapped to their v2 equivalent
+// so the picker highlights the right (only offered) card. The backend
+// (webStore_templates/_store-theme-registry.php) aliases these the same way,
+// so rendering is correct even before a resave normalizes the stored id.
+const LEGACY_TEMPLATE_ALIASES = {
+  store_template_1: 'store_template_9',
+  store_template_2: 'store_template_10',
+  store_template_3: 'store_template_11',
+  store_template_4: 'store_template_12',
+  store_template_5: 'store_template_13',
+  store_template_6: 'store_template_14',
+  store_template_7: 'store_template_15',
+  store_template_8: 'store_template_16',
+  whatsapp_store_default: 'store_template_10',
+  webstore1: 'store_template_10',
+  default: 'store_template_10',
+};
+const resolveTemplateId = (id) => {
+  if (!id) return 'store_template_10';
+  if (STORE_TEMPLATES.some(t => t.id === id)) return id;
+  return LEGACY_TEMPLATE_ALIASES[id] || 'store_template_10';
+};
 
 const TABS = [
   { id: 'basic', label: 'Basic Info' },
@@ -31,6 +56,8 @@ const TABS = [
   { id: 'templates', label: 'Templates' }
 ];
 
+const THEME_MODES = ['light', 'dark', 'auto'];
+
 const defaultFormData = {
   url_alias: '', store_name: '', owner_name: '', whatsapp_number: '',
   email: '', phone: '', address: '', location: '', location_url: '',
@@ -38,7 +65,10 @@ const defaultFormData = {
   min_order_amount: '0', delivery_charge: '0', cod_available: false,
   show_search: true, show_categories: true, show_featured: true,
   order_message_template: '', primary_color: '#25D366', secondary_color: '#128C7E',
-  template_id: 'webstore1'
+  // Template-independent branding / behaviour (matches whatsapp_stores columns)
+  accent_color: '', text_color: '', font_family: '', theme_mode: 'light',
+  enable_translate: true, enable_pwa: false, seo_title: '', seo_description: '',
+  template_id: 'store_template_10'
 };
 
 // UI Components
@@ -93,6 +123,25 @@ const ColorInput = ({ label, value, onChange }) => (
         ))}
       </View>
     </ScrollView>
+  </View>
+);
+
+const SegmentField = ({ label, value, options, onChange }) => (
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>{label}</Text>
+    <View style={styles.segmentRow}>
+      {options.map((opt) => (
+        <TouchableOpacity
+          key={opt}
+          style={[styles.segment, value === opt && styles.segmentActive]}
+          onPress={() => onChange(opt)}
+        >
+          <Text style={[styles.segmentText, value === opt && styles.segmentTextActive]}>
+            {opt.charAt(0).toUpperCase() + opt.slice(1)}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
   </View>
 );
 
@@ -177,7 +226,8 @@ export default function WhatsappStoresScreen() {
     try {
       const response = await fetchApi(`/api/stores/get.php?id=${store.id}`);
       if (response.success && response.data?.store) {
-        setFormData({ ...defaultFormData, ...response.data.store });
+        const loaded = response.data.store;
+        setFormData({ ...defaultFormData, ...loaded, template_id: resolveTemplateId(loaded.template_id) });
       }
       // Load Categories, Products & Orders
       const catRes = await fetchApi(`/api/store-categories/list.php?store_id=${store.id}`);
@@ -264,7 +314,7 @@ export default function WhatsappStoresScreen() {
         Alert.alert("Success", "Image uploaded successfully!");
         const fresh = await fetchApi(`/api/stores/get.php?id=${editingStoreId}`);
         if (fresh.success && fresh.data?.store) {
-          setFormData({ ...formData, ...fresh.data.store });
+          setFormData({ ...formData, ...fresh.data.store, template_id: resolveTemplateId(fresh.data.store.template_id) });
         }
       } else {
         Alert.alert("Error", response.message || "Upload failed");
@@ -533,6 +583,12 @@ export default function WhatsappStoresScreen() {
               <Text style={styles.label}>Colors</Text>
               <ColorInput label="Primary Color" value={formData.primary_color} onChange={c => setFormData({...formData, primary_color: c})} />
               <ColorInput label="Secondary Color" value={formData.secondary_color} onChange={c => setFormData({...formData, secondary_color: c})} />
+              <ColorInput label="Accent Color" value={formData.accent_color} onChange={c => setFormData({...formData, accent_color: c})} />
+              <ColorInput label="Text Color" value={formData.text_color} onChange={c => setFormData({...formData, text_color: c})} />
+
+              <SegmentField label="Theme Mode" value={formData.theme_mode || 'light'} options={THEME_MODES} onChange={v => setFormData({...formData, theme_mode: v})} />
+              <TextInputField label="Font Family (optional)" value={formData.font_family} onChangeText={t => setFormData({...formData, font_family: t})} placeholder="e.g. Poppins" />
+              <Text style={styles.helperText}>Leave colors/font blank to use each template's own design defaults.</Text>
             </GlassCard>
           )}
 
@@ -552,8 +608,14 @@ export default function WhatsappStoresScreen() {
               <SwitchInputField label="Show Search Bar" value={formData.show_search} onValueChange={v => setFormData({...formData, show_search: v})} />
               <SwitchInputField label="Show Category Filter" value={formData.show_categories} onValueChange={v => setFormData({...formData, show_categories: v})} />
               <SwitchInputField label="Highlight Featured Products" value={formData.show_featured} onValueChange={v => setFormData({...formData, show_featured: v})} />
-              
+              <SwitchInputField label="Language Translate Widget" value={formData.enable_translate} onValueChange={v => setFormData({...formData, enable_translate: v})} />
+              <SwitchInputField label="Install as App (PWA)" value={formData.enable_pwa} onValueChange={v => setFormData({...formData, enable_pwa: v})} />
+
               <TextInputField label="WhatsApp Order Message Template" value={formData.order_message_template} onChangeText={t => setFormData({...formData, order_message_template: t})} multiline height={100} />
+
+              <Text style={[styles.label, {marginTop: 6}]}>SEO</Text>
+              <TextInputField label="SEO Title" value={formData.seo_title} onChangeText={t => setFormData({...formData, seo_title: t})} placeholder="Shown in the browser tab / search results" />
+              <TextInputField label="SEO Description" value={formData.seo_description} onChangeText={t => setFormData({...formData, seo_description: t})} multiline height={80} />
             </GlassCard>
           )}
 
@@ -763,6 +825,12 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
   input: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 14, color: COLORS.text, fontSize: 14 },
   textArea: { paddingTop: 12, textAlignVertical: 'top' },
+  helperText: { fontSize: 12, color: COLORS.textMuted, marginTop: -4, marginBottom: 8 },
+  segmentRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 8, padding: 3 },
+  segment: { flex: 1, paddingVertical: 9, borderRadius: 6, alignItems: 'center' },
+  segmentActive: { backgroundColor: COLORS.primary },
+  segmentText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  segmentTextActive: { color: '#ffffff' },
   
   switchGroup: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   switchLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text },

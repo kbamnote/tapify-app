@@ -11,12 +11,24 @@ import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 
 const NAV_ITEMS = [
-  { id: 'inquiries',        label: 'Inquiries',        icon: '💬' },
+  { id: 'ai-growth',        label: 'AI Growth Center', icon: '🤖' },
+  { id: 'social',           label: 'Social Media',     icon: '📣' },
+  { id: 'boost-ads',        label: 'Boost Ads',        icon: '📈' },
+  { id: 'wallet',           label: 'Wallet',           icon: '💰' },
   { id: 'businesses',       label: 'Businesses',       icon: '🏢' },
-  { id: 'whatsapp-stores',  label: 'Web Store',        icon: '🏪' },
-  { id: 'whatsapp-orders',  label: 'Web Orders',       icon: '🛍️' },
+  { id: 'website-orders',   label: 'Orders',           icon: '🛒' },
+  { id: 'website-inquiries', label: 'Inquiries',       icon: '📨' },
   { id: 'reviews-funnel',   label: 'Reviews Funnel',   icon: '⭐' },
   { id: 'settings',         label: 'Settings',         icon: '⚙️' },
+];
+
+// Shown only to users with role === 'admin' (mirrors the web admin panel).
+const ADMIN_NAV_ITEMS = [
+  { id: 'admin-dashboard', label: 'Admin Dashboard',   icon: '🛡️' },
+  { id: 'admin-users',     label: 'Users',             icon: '👥' },
+  { id: 'admin-broadcast', label: 'Send Notification', icon: '📣' },
+  { id: 'admin-leads',     label: 'Website Leads',     icon: '📥' },
+  { id: 'admin-titanium',  label: 'Manage Titanium',   icon: '♛' },
 ];
 
 export default function Sidebar() {
@@ -76,15 +88,26 @@ export default function Sidebar() {
             </TouchableOpacity>
           )}
 
-          {/* Admin: Manage Titanium — only for admin role */}
+          {/* Admin section — only for admin role */}
           {isAdmin && (
-            <TouchableOpacity
-              style={[styles.navItem, styles.adminItem, currentScreen === 'admin-titanium' && styles.navItemActive]}
-              onPress={() => navigate('admin-titanium')}
-            >
-              <Text style={styles.navIcon}>🛡️</Text>
-              <Text style={[styles.navLabel, { color: '#c1a046' }]}>Manage Titanium</Text>
-            </TouchableOpacity>
+            <View style={styles.adminSection}>
+              <Text style={styles.adminHeader}>ADMIN PANEL</Text>
+              {ADMIN_NAV_ITEMS.map((item) => {
+                const isActive = currentScreen === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.navItem, isActive && styles.adminItemActive]}
+                    onPress={() => navigate(item.id)}
+                  >
+                    <Text style={styles.navIcon}>{item.icon}</Text>
+                    <Text style={[styles.navLabel, styles.adminLabel, isActive && styles.adminLabelActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           )}
         </ScrollView>
 
@@ -218,6 +241,30 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(193,160,70,0.15)',
     marginTop: 4,
+  },
+  adminSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(193,160,70,0.2)',
+  },
+  adminHeader: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#c1a046',
+    letterSpacing: 1.2,
+    paddingHorizontal: 14,
+    marginBottom: 6,
+  },
+  adminLabel: {
+    color: '#8a7327',
+  },
+  adminItemActive: {
+    backgroundColor: 'rgba(193,160,70,0.14)',
+  },
+  adminLabelActive: {
+    color: '#c1a046',
+    fontWeight: '700',
   },
   footer: {
     padding: 16,

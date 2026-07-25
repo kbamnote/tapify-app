@@ -12,6 +12,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.6.0",
     "expo": "~55.0.9",
+    "expo-clipboard": "~55.0.14",
     "expo-constants": "~55.0.16",
     "expo-dev-client": "~55.0.35",
     "expo-device": "~55.0.17",

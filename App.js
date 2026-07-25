@@ -24,16 +24,31 @@ import WhatsappStoresScreen from './src/screens/WhatsappStoresScreen';
 import WhatsappOrdersScreen from './src/screens/WhatsappOrdersScreen';
 import MyDesignsScreen from './src/screens/MyDesignsScreen';
 import DesignCustomizeScreen from './src/screens/DesignCustomizeScreen';
+import AiGrowthScreen from './src/screens/AiGrowthScreen';
+import GoogleBusinessScreen from './src/screens/GoogleBusinessScreen';
+import SocialScreen from './src/screens/SocialScreen';
+import WalletScreen from './src/screens/WalletScreen';
+import BoostAdsScreen from './src/screens/BoostAdsScreen';
 import ReviewsScreen from './src/screens/ReviewsScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import BusinessesScreen from './src/screens/BusinessesScreen';
 import TitaniumScreen from './src/screens/TitaniumScreen';
 import AdminTitaniumScreen from './src/screens/AdminTitaniumScreen';
+import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
+import AdminUsersScreen from './src/screens/AdminUsersScreen';
+import AdminBroadcastScreen from './src/screens/AdminBroadcastScreen';
+import AdminLeadsScreen from './src/screens/AdminLeadsScreen';
+import WebsiteOrdersScreen from './src/screens/WebsiteOrdersScreen';
+import WebsiteAppointmentsScreen from './src/screens/WebsiteAppointmentsScreen';
+import WebsiteInquiriesScreen from './src/screens/WebsiteInquiriesScreen';
+import WebsiteBuilderScreen from './src/screens/WebsiteBuilderScreen';
+import SiteEditorScreen from './src/screens/SiteEditorScreen';
 
 // Components
 import Header from './src/components/Header';
 import Sidebar from './src/components/Sidebar';
 import TabBar from './src/components/TabBar';
+import UpdatePopup from './src/components/UpdatePopup';
 
 // Keep the native splash visible while JS loads
 SplashScreen.preventAutoHideAsync();
@@ -64,6 +79,16 @@ function ScreenRenderer() {
       return <MyDesignsScreen />;
     case 'design-customize':
       return <DesignCustomizeScreen />;
+    case 'ai-growth':
+      return <AiGrowthScreen />;
+    case 'google-business':
+      return <GoogleBusinessScreen />;
+    case 'social':
+      return <SocialScreen />;
+    case 'wallet':
+      return <WalletScreen />;
+    case 'boost-ads':
+      return <BoostAdsScreen />;
     case 'reviews-funnel':
       return <ReviewsScreen />;
     case 'notifications':
@@ -74,13 +99,31 @@ function ScreenRenderer() {
       return <TitaniumScreen />;
     case 'admin-titanium':
       return <AdminTitaniumScreen />;
+    case 'admin-dashboard':
+      return <AdminDashboardScreen />;
+    case 'admin-users':
+      return <AdminUsersScreen />;
+    case 'admin-broadcast':
+      return <AdminBroadcastScreen />;
+    case 'admin-leads':
+      return <AdminLeadsScreen />;
+    case 'website-orders':
+      return <WebsiteOrdersScreen />;
+    case 'website-appointments':
+      return <WebsiteAppointmentsScreen />;
+    case 'website-inquiries':
+      return <WebsiteInquiriesScreen />;
+    case 'website-builder':
+      return <WebsiteBuilderScreen />;
+    case 'site-editor':
+      return <SiteEditorScreen />;
     default:
       return <DashboardScreen />;
   }
 }
 
 function MainLayout() {
-  const { currentScreen, user, navigate } = useNavigation();
+  const { currentScreen, user, navigate, params } = useNavigation();
 
   // ALL HOOKS MUST COME BEFORE ANY EARLY RETURN — Rules of Hooks
   // The `if (!user) return` guard lives inside the effect body, not before it.
@@ -117,11 +160,25 @@ function MainLayout() {
       case 'whatsapp-orders': return 'Web Orders';
       case 'my-designs': return 'My Designs';
       case 'design-customize': return 'Customize Design';
+      case 'ai-growth': return 'AI Growth Center';
+      case 'google-business': return 'Google Business Profile';
+      case 'social': return 'Social Media';
+      case 'wallet': return 'Wallet';
+      case 'boost-ads': return 'Boost Ads';
       case 'reviews-funnel': return 'Reviews Funnel';
       case 'notifications': return 'Notification Center';
       case 'businesses':      return 'Business Directory';
       case 'titanium':        return '♛ Titanium Member';
       case 'admin-titanium':  return 'Manage Titanium Members';
+      case 'admin-dashboard': return '🛡️ Admin Dashboard';
+      case 'admin-users':     return '👥 Users';
+      case 'admin-broadcast': return '📣 Send Notification';
+      case 'admin-leads':     return '📥 Website Leads';
+      case 'website-orders':       return '🛒 Website Orders';
+      case 'website-appointments': return '📆 Website Appointments';
+      case 'website-inquiries':    return '📨 Website Inquiries';
+      case 'website-builder':      return '🌐 Website Builder';
+      case 'site-editor':          return params?.name ? `✎ ${params.name}` : 'Edit Website';
       default: return 'Tapify';
     }
   };
@@ -215,7 +272,10 @@ export default function App() {
         {showSplash ? (
           <CustomSplash onFinish={() => setShowSplash(false)} />
         ) : (
-          <MainLayout />
+          <>
+            <MainLayout />
+            <UpdatePopup />
+          </>
         )}
       </NavigationProvider>
     </SafeAreaProvider>

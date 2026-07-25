@@ -3,7 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
-  ScrollView,
+  FlatList,
   Image,
   TouchableOpacity,
   Share,
@@ -193,7 +193,7 @@ export default function MyDesignsScreen() {
     setDesigns([]);
     setGlobalCategoryContent([]);
     setSearchQuery('');
-    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    scrollViewRef.current?.scrollToOffset({ offset: 0, animated: false });
   };
 
   const toggleSave = async (designId) => {
@@ -294,6 +294,255 @@ export default function MyDesignsScreen() {
     );
   }
 
+  // ── Virtualized list config ────────────────────────────────────────────────
+  // Everything the screen scrolls now flows through a single FlatList so only
+  // the on-screen rows mount. Off-screen images are never fetched until you
+  // scroll to them — that's what fixes the "all images load at once" lag.
+  const searchQ = searchQuery.trim().toLowerCase();
+
+  const showHomeGrid     = activeTab === 'home' && selectedCategory === null;
+  const showGlobalGrid   = activeTab === 'categories' && selectedGlobalCategory === null;
+  const inCategoryDetail = activeTab === 'categories' && selectedGlobalCategory !== null;
+  const showSubGrid      = inCategoryDetail && selectedGlobalSubCategory === null && globalSubCategories.length > 0;
+
+  let listData = [];
+  let numColumns = 1;
+
+  if (showHomeGrid) {
+    const filtered = searchQ ? categories.filter(c => c.name.toLowerCase().includes(searchQ)) : categories;
+    listData = filtered.map(cat => ({ kind: 'homeCat', item: cat }));
+    numColumns = 2;
+  } else if (showGlobalGrid) {
+    const filtered = searchQ ? globalCategories.filter(c => c.name.toLowerCase().includes(searchQ)) : globalCategories;
+    listData = filtered.map(cat => ({ kind: 'globalCat', item: cat }));
+    numColumns = 2;
+  } else if (showSubGrid) {
+    listData = globalSubCategories.map(sub => ({ kind: 'subCat', item: sub }));
+    numColumns = 2;
+  } else if (inCategoryDetail) {
+    // Sub-category selected (or a category with no sub-categories): show its
+    // content cards followed by its designs, in one virtualized list.
+    listData = [
+      ...globalCategoryContent.map(c => ({ kind: 'content', item: c })),
+      ...designs.map(d => ({ kind: 'design', item: d })),
+    ];
+  } else {
+    // Home-category designs, or the Saved tab.
+    listData = designs.map(d => ({ kind: 'design', item: d }));
+  }
+
+  const isGrid = numColumns === 2;
+
+  const renderRow = ({ item: row }) => {
+    switch (row.kind) {
+      case 'homeCat': {
+        const cat = row.item;
+        return (
+          <TouchableOpacity
+            style={styles.newGridCard}
+            onPress={() => {
+              savedScrollY.current.home = scrollYRef.current;
+              setSelectedCategory(cat.id);
+              scrollViewRef.current?.scrollToOffset({ offset: 0, animated: false });
+            }}
+            activeOpacity={0.85}
+          >
+            {cat.image_url ? (
+              <Image source={{ uri: cat.image_url }} style={styles.newGridCardImage} />
+            ) : (
+              <View style={[styles.newGridCardImage, { backgroundColor: cat.bg_color || '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ fontSize: 36 }}>{cat.icon || '🎨'}</Text>
+              </View>
+            )}
+            <View style={styles.newGridCardLabelContainer}>
+              <Text style={styles.newGridCardText}>{cat.name}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }
+      case 'globalCat': {
+        const cat = row.item;
+        return (
+          <TouchableOpacity
+            style={styles.newGridCard}
+            onPress={() => {
+              savedScrollY.current.categories = scrollYRef.current;
+              setSelectedGlobalSubCategory(null);
+              setSelectedGlobalCategory(cat.id);
+              scrollViewRef.current?.scrollToOffset({ offset: 0, animated: false });
+            }}
+            activeOpacity={0.85}
+          >
+            <Image source={{ uri: cat.image_url ? (cat.image_url.startsWith('http') ? cat.image_url : `${API_BASE}${cat.image_url}`) : null }} style={styles.newGridCardImage} />
+            <View style={styles.newGridCardLabelContainer}>
+              <Text style={styles.newGridCardText}>{cat.name}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }
+      case 'subCat': {
+        const sub = row.item;
+        return (
+          <TouchableOpacity
+            style={styles.newGridCard}
+            onPress={() => {
+              savedScrollY.current.subCategories = scrollYRef.current;
+              setSelectedGlobalSubCategory(sub.id);
+              scrollViewRef.current?.scrollToOffset({ offset: 0, animated: false });
+            }}
+            activeOpacity={0.85}
+          >
+            <Image
+              source={{ uri: sub.image_url ? (sub.image_url.startsWith('http') ? sub.image_url : `${API_BASE}${sub.image_url}`) : null }}
+              style={styles.newGridCardImage}
+            />
+            <View style={styles.newGridCardLabelContainer}>
+              <Text style={styles.newGridCardText}>{sub.name}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }
+      case 'content': {
+        const item = row.item;
+        return (
+          <GlassCard style={{ marginBottom: 15, padding: 15 }}>
+            {item.type !== 'text' && item.image_url && (
+              <Image
+                source={{ uri: item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}` }}
+                style={{ width: '100%', height: 250, borderRadius: 10, marginBottom: 10 }}
+                resizeMode="cover"
+              />
+            )}
+            {item.type !== 'image' && item.text_content && (
+              <Text style={{ fontSize: 15, color: COLORS.text, lineHeight: 22, fontWeight: '500' }}>{item.text_content}</Text>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, alignItems: 'center' }}>
+              <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{new Date(item.created_at).toLocaleDateString()}</Text>
+              <TouchableOpacity style={styles.catContentActionBtn} onPress={() => {
+                  Share.share({ message: item.text_content || 'Check out this post from Tapify!', url: item.image_url ? (item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}`) : undefined });
+              }}>
+                <Text style={styles.catContentActionText}>📤 Share</Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        );
+      }
+      case 'design':
+        return renderDesignCard(row.item);
+      default:
+        return null;
+    }
+  };
+
+  const renderListHeader = () => {
+    if (showHomeGrid) {
+      return <Text style={styles.gridHeaderTitle}>Choose a Category</Text>;
+    }
+    if (showGlobalGrid) {
+      return <Text style={styles.gridHeaderTitle}>Browse Categories</Text>;
+    }
+    if (inCategoryDetail) {
+      return (
+        <TouchableOpacity
+          style={styles.backButtonRow}
+          onPress={() => {
+            if (selectedGlobalSubCategory !== null) {
+              setSelectedGlobalSubCategory(null);
+              setTimeout(() => {
+                requestAnimationFrame(() => {
+                  scrollViewRef.current?.scrollToOffset({ offset: savedScrollY.current.subCategories, animated: false });
+                });
+              }, 200);
+            } else {
+              setSelectedGlobalCategory(null);
+              setGlobalSubCategories([]);
+              setGlobalCategoryContent([]);
+              setTimeout(() => {
+                requestAnimationFrame(() => {
+                  scrollViewRef.current?.scrollToOffset({ offset: savedScrollY.current.categories, animated: false });
+                });
+              }, 200);
+            }
+          }}
+        >
+          <Text style={styles.backButtonText}>
+            {selectedGlobalSubCategory !== null ? '← Back to Sub-categories' : '← Back to Categories'}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    if (activeTab === 'home' && selectedCategory !== null) {
+      return (
+        <TouchableOpacity style={styles.backButtonRow} onPress={() => {
+          setSelectedCategory(null);
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              scrollViewRef.current?.scrollToOffset({ offset: savedScrollY.current.home, animated: false });
+            });
+          }, 200);
+        }}>
+          <Text style={styles.backButtonText}>← Back to Home Categories</Text>
+        </TouchableOpacity>
+      );
+    }
+    return null;
+  };
+
+  const renderListEmpty = () => {
+    if (showHomeGrid) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>🔍</Text>
+          <Text style={styles.emptyTitle}>No Results</Text>
+          <Text style={styles.emptySubtitle}>No categories match "{searchQuery}"</Text>
+        </View>
+      );
+    }
+    if (showGlobalGrid) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>🔍</Text>
+          <Text style={styles.emptyTitle}>No Results</Text>
+          <Text style={styles.emptySubtitle}>
+            {globalCategories.length === 0 ? 'No categories available.' : `No categories match "${searchQuery}"`}
+          </Text>
+        </View>
+      );
+    }
+    if (inCategoryDetail) {
+      if (loadingGlobal || loadingDesigns) {
+        return <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />;
+      }
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>📭</Text>
+          <Text style={styles.emptyTitle}>No Content Found</Text>
+          <Text style={styles.emptySubtitle}>There is no content in this category yet.</Text>
+        </View>
+      );
+    }
+    // Home-category or Saved designs list
+    if (loadingDesigns) {
+      return <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />;
+    }
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🎨</Text>
+        {activeTab === 'saved' ? (
+          <>
+            <Text style={styles.emptyTitle}>No Saved Designs</Text>
+            <Text style={styles.emptySubtitle}>Tap the Save button on any design to bookmark it here!</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.emptyTitle}>No Designs Yet</Text>
+            <Text style={styles.emptySubtitle}>The designer hasn't added any designs in this category yet. Pull down to refresh!</Text>
+          </>
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Top Tab Bar */}
@@ -323,7 +572,7 @@ export default function MyDesignsScreen() {
       </View>
 
       {/* Fixed Search Bar */}
-      {((activeTab === 'home' && selectedCategory === null) || 
+      {((activeTab === 'home' && selectedCategory === null) ||
         (activeTab === 'categories' && selectedGlobalCategory === null)) && (
         <View style={[styles.searchBar, { marginHorizontal: 16, marginTop: 16, marginBottom: 0 }]}>
           <Text style={styles.searchIcon}>🔍</Text>
@@ -344,245 +593,30 @@ export default function MyDesignsScreen() {
         </View>
       )}
 
-      {/* Scrollable Content */}
-      <ScrollView
+      {/* Virtualized content — only visible rows mount, so off-screen images
+          are never downloaded until scrolled into view. */}
+      <FlatList
         ref={scrollViewRef}
+        key={isGrid ? 'grid' : 'list'}
+        data={listData}
+        keyExtractor={(row, index) => `${row.kind}-${row.item?.id ?? index}`}
+        renderItem={renderRow}
+        numColumns={numColumns}
+        columnWrapperStyle={isGrid ? { justifyContent: 'space-between' } : undefined}
+        ListHeaderComponent={renderListHeader()}
+        ListEmptyComponent={renderListEmpty()}
+        extraData={savedIds}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        updateCellsBatchingPeriod={50}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
-      >
-        {/* Categories Grid */}
-        {activeTab === 'home' && selectedCategory === null && (
-          <View style={styles.gridContainer}>
-            <Text style={styles.gridHeaderTitle}>Choose a Category</Text>
-
-            {(() => {
-              const q = searchQuery.trim().toLowerCase();
-              const filtered = q
-                ? categories.filter(cat => cat.name.toLowerCase().includes(q))
-                : categories;
-              return filtered.length > 0 ? (
-                <View style={styles.categoryGrid}>
-                  {filtered.map((cat) => (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={styles.newGridCard}
-                      onPress={() => {
-                        savedScrollY.current.home = scrollYRef.current;
-                        setSelectedCategory(cat.id);
-                        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-                      }}
-                      activeOpacity={0.85}
-                    >
-                      {cat.image_url ? (
-                        <Image source={{ uri: cat.image_url }} style={styles.newGridCardImage} />
-                      ) : (
-                        <View style={[styles.newGridCardImage, { backgroundColor: cat.bg_color || '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 36 }}>{cat.icon || '🎨'}</Text>
-                        </View>
-                      )}
-                      <View style={styles.newGridCardLabelContainer}>
-                        <Text style={styles.newGridCardText}>{cat.name}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyIcon}>🔍</Text>
-                  <Text style={styles.emptyTitle}>No Results</Text>
-                  <Text style={styles.emptySubtitle}>No categories match "{searchQuery}"</Text>
-                </View>
-              );
-            })()}
-          </View>
-        )}
-
-        {/* Categories Tab Grid */}
-        {activeTab === 'categories' && selectedGlobalCategory === null && (
-          <View style={styles.gridContainer}>
-            <Text style={styles.gridHeaderTitle}>Browse Categories</Text>
-
-            {(() => {
-              const q = searchQuery.trim().toLowerCase();
-              const filtered = q
-                ? globalCategories.filter(cat => cat.name.toLowerCase().includes(q))
-                : globalCategories;
-              return filtered.length > 0 ? (
-                <View style={styles.categoryGrid}>
-                  {filtered.map((cat) => (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={styles.newGridCard}
-                      onPress={() => { 
-                        savedScrollY.current.categories = scrollYRef.current;
-                        setSelectedGlobalSubCategory(null); 
-                        setSelectedGlobalCategory(cat.id); 
-                        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-                      }}
-                      activeOpacity={0.85}
-                    >
-                      <Image source={{ uri: cat.image_url ? (cat.image_url.startsWith('http') ? cat.image_url : `${API_BASE}${cat.image_url}`) : null }} style={styles.newGridCardImage} />
-                      <View style={styles.newGridCardLabelContainer}>
-                        <Text style={styles.newGridCardText}>{cat.name}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyIcon}>🔍</Text>
-                  <Text style={styles.emptyTitle}>No Results</Text>
-                  <Text style={styles.emptySubtitle}>
-                    {globalCategories.length === 0
-                      ? 'No categories available.'
-                      : `No categories match "${searchQuery}"`}
-                  </Text>
-                </View>
-              );
-            })()}
-          </View>
-        )}
-
-        {/* Global Category Content Viewer */}
-        {activeTab === 'categories' && selectedGlobalCategory !== null && (
-          <>
-            <TouchableOpacity
-              style={styles.backButtonRow}
-              onPress={() => {
-                if (selectedGlobalSubCategory !== null) {
-                  setSelectedGlobalSubCategory(null);
-                  setTimeout(() => {
-                    requestAnimationFrame(() => {
-                      scrollViewRef.current?.scrollTo({ y: savedScrollY.current.subCategories, animated: false });
-                    });
-                  }, 200);
-                } else {
-                  setSelectedGlobalCategory(null);
-                  setGlobalSubCategories([]);
-                  setGlobalCategoryContent([]);
-                  setTimeout(() => {
-                    requestAnimationFrame(() => {
-                      scrollViewRef.current?.scrollTo({ y: savedScrollY.current.categories, animated: false });
-                    });
-                  }, 200);
-                }
-              }}
-            >
-              <Text style={styles.backButtonText}>
-                {selectedGlobalSubCategory !== null ? '← Back to Sub-categories' : '← Back to Categories'}
-              </Text>
-            </TouchableOpacity>
-
-            {loadingGlobal ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
-            ) : selectedGlobalSubCategory === null && globalSubCategories.length > 0 ? (
-              // Show sub-categories grid
-              <View style={styles.gridContainer}>
-                <View style={styles.categoryGrid}>
-                  {globalSubCategories.map((sub) => (
-                    <TouchableOpacity
-                      key={sub.id}
-                      style={styles.newGridCard}
-                      onPress={() => {
-                        savedScrollY.current.subCategories = scrollYRef.current;
-                        setSelectedGlobalSubCategory(sub.id);
-                        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-                      }}
-                      activeOpacity={0.85}
-                    >
-                      <Image
-                        source={{ uri: sub.image_url ? (sub.image_url.startsWith('http') ? sub.image_url : `${API_BASE}${sub.image_url}`) : null }}
-                        style={styles.newGridCardImage}
-                      />
-                      <View style={styles.newGridCardLabelContainer}>
-                        <Text style={styles.newGridCardText}>{sub.name}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            ) : globalCategoryContent.length > 0 ? (
-              globalCategoryContent.map(item => (
-                <GlassCard key={item.id} style={{ marginBottom: 15, padding: 15 }}>
-                  {item.type !== 'text' && item.image_url && (
-                    <Image
-                      source={{ uri: item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}` }}
-                      style={{ width: '100%', height: 250, borderRadius: 10, marginBottom: 10 }}
-                      resizeMode="cover"
-                    />
-                  )}
-                  {item.type !== 'image' && item.text_content && (
-                    <Text style={{ fontSize: 15, color: COLORS.text, lineHeight: 22, fontWeight: '500' }}>{item.text_content}</Text>
-                  )}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{new Date(item.created_at).toLocaleDateString()}</Text>
-                    <TouchableOpacity style={styles.catContentActionBtn} onPress={() => {
-                        Share.share({ message: item.text_content || 'Check out this post from Tapify!', url: item.image_url ? (item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}`) : undefined });
-                    }}>
-                      <Text style={styles.catContentActionText}>📤 Share</Text>
-                    </TouchableOpacity>
-                  </View>
-                </GlassCard>
-              ))
-            ) : globalCategoryContent.length === 0 && designs.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>📭</Text>
-                <Text style={styles.emptyTitle}>No Content Found</Text>
-                <Text style={styles.emptySubtitle}>There is no content in this category yet.</Text>
-              </View>
-            ) : null}
-          </>
-        )}
-
-        {/* Design List (Home / Saved / Categories) */}
-        {(activeTab === 'saved' || 
-          (activeTab === 'home' && selectedCategory !== null) ||
-          (activeTab === 'categories' && (selectedGlobalSubCategory !== null || (selectedGlobalCategory !== null && globalSubCategories.length === 0)))
-        ) && (
-          <>
-            {activeTab === 'home' && selectedCategory !== null && (
-              <TouchableOpacity style={styles.backButtonRow} onPress={() => {
-                setSelectedCategory(null);
-                setTimeout(() => {
-                  requestAnimationFrame(() => {
-                    scrollViewRef.current?.scrollTo({ y: savedScrollY.current.home, animated: false });
-                  });
-                }, 200);
-              }}>
-                <Text style={styles.backButtonText}>← Back to Home Categories</Text>
-              </TouchableOpacity>
-            )}
-
-            {loadingDesigns && !loadingGlobal ? (
-              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />
-            ) : designs.length > 0 ? (
-              designs.map((design) => renderDesignCard(design))
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>🎨</Text>
-                {activeTab === 'saved' ? (
-                  <>
-                    <Text style={styles.emptyTitle}>No Saved Designs</Text>
-                    <Text style={styles.emptySubtitle}>
-                      Tap the Save button on any design to bookmark it here!
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.emptyTitle}>No Designs Yet</Text>
-                    <Text style={styles.emptySubtitle}>
-                      The designer hasn't added any designs in this category yet. Pull down to refresh!
-                    </Text>
-                  </>
-                )}
-              </View>
-            )}
-          </>
-        )}
-      </ScrollView>
+      />
     </View>
   );
 }

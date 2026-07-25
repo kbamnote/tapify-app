@@ -14,34 +14,49 @@ const { width } = Dimensions.get('window');
 const SWATCH_COLORS = ['#153e3f', '#25D366', '#d19a66', '#000000', '#3b5998', '#ef4444', '#ffffff', '#8e44ad', '#2980b9', '#f1c40f'];
 
 const TEMPLATES = [
-  { id: 'vcard01', name: 'Corporate Executive',      primary: '#c9a84c', secondary: '#f0c96a', bg: '#0a1628', dark: true  },
-  { id: 'vcard02', name: 'Medical Doctor',           primary: '#0d9488', secondary: '#14b8a6', bg: '#f8fafc'              },
-  { id: 'vcard03', name: 'Creative Designer',        primary: '#7c3aed', secondary: '#e879f9', bg: '#0c0512', dark: true  },
-  { id: 'vcard04', name: 'Real Estate',              primary: '#c87941', secondary: '#8b5e3c', bg: '#fdf8f0'              },
-  { id: 'vcard05', name: 'Restaurant Chef',          primary: '#c0392b', secondary: '#d4af37', bg: '#1a0a0a', dark: true  },
-  { id: 'vcard06', name: 'Fitness Trainer',          primary: '#f97316', secondary: '#fbbf24', bg: '#0d0d0d', dark: true  },
-  { id: 'vcard07', name: 'Tech Developer',           primary: '#00e5ff', secondary: '#00ff88', bg: '#050d12', dark: true  },
-  { id: 'vcard08', name: 'Lawyer & Legal',           primary: '#0b1c3d', secondary: '#b8952a', bg: '#f4f6f9'              },
-  { id: 'vcard09', name: 'Beauty Salon',             primary: '#c9796a', secondary: '#e8b898', bg: '#fff8f8'              },
-  { id: 'vcard10', name: 'Musician & Artist',        primary: '#7b2fff', secondary: '#ff2d9e', bg: '#04050e', dark: true  },
-  { id: 'vcard11', name: 'Photographer',             primary: '#d4a853', secondary: '#f0c878', bg: '#0a0a0a', dark: true  },
-  { id: 'vcard12', name: 'Financial Advisor',        primary: '#0f2b52', secondary: '#2563eb', bg: '#f0f4f8'              },
-  { id: 'vcard13', name: 'Architect',                primary: '#1c1c1c', secondary: '#c45c26', bg: '#f7f5f0'              },
-  { id: 'vcard14', name: 'Yoga & Wellness',          primary: '#7a9e7e', secondary: '#a8c5a0', bg: '#f5f0eb'              },
-  { id: 'vcard15', name: 'Digital Marketing',        primary: '#6c47ff', secondary: '#ff47b8', bg: '#060614', dark: true  },
-  { id: 'vcard16', name: 'Interior Designer',        primary: '#c17f5c', secondary: '#e8a07a', bg: '#f9f6f1'              },
-  { id: 'vcard17', name: 'Wedding Planner',          primary: '#c9607a', secondary: '#e8849a', bg: '#fdf8fc'              },
-  { id: 'vcard18', name: 'Dentist',                  primary: '#0891b2', secondary: '#06b6d4', bg: '#f0fffe'              },
-  { id: 'vcard19', name: 'CA & Accountant',          primary: '#d4a017', secondary: '#f0c040', bg: '#0e1a2b', dark: true  },
-  { id: 'vcard20', name: 'School Teacher',           primary: '#f59e0b', secondary: '#fbbf24', bg: '#fffbf0'              },
-  { id: 'vcard21', name: 'Fashion Designer',         primary: '#e8b4b8', secondary: '#c9a96e', bg: '#0c0c0c', dark: true  },
-  { id: 'vcard22', name: 'Travel Agent',             primary: '#0ea5e9', secondary: '#38bdf8', bg: '#f0f9ff'              },
-  { id: 'vcard23', name: 'Automobile Dealer',        primary: '#dc2626', secondary: '#c0c8d4', bg: '#0a0a0a', dark: true  },
-  { id: 'vcard24', name: 'Event Planner',            primary: '#9333ea', secondary: '#ec4899', bg: '#0d0010', dark: true  },
-  { id: 'vcard25', name: 'Pharma & Medical',         primary: '#16a34a', secondary: '#22c55e', bg: '#f0fdf4'              },
-  { id: 'vcard26', name: 'NGO & Social',             primary: '#7c3aed', secondary: '#a78bfa', bg: '#f5f3ff'              },
-  { id: 'vcard27', name: 'Coaching Institute',       primary: '#2563eb', secondary: '#3b82f6', bg: '#eff6ff'              },
-  { id: 'vcard28', name: 'Electrician & Contractor', primary: '#d97706', secondary: '#f59e0b', bg: '#fffbeb'              },
+  // Wired to the pro/premium templates in tapify-frontend. Each id matches a
+  // frontend template_id (what the backend renders); previews are the new
+  // vcardN.png images in assets. The 7 "gap" images (16,30-32,36-38) had no
+  // matching frontend vcardN id, so they map to the Pro template of the same
+  // profession (identified by scanning each image).
+  { id: 'vcard1',  name: 'Simple Contact' },
+  { id: 'vcard2',  name: 'Executive Profile' },
+  { id: 'vcard3',  name: 'Clean Canvas' },
+  { id: 'vcard4',  name: 'Professional' },
+  { id: 'vcard5',  name: 'Corporate Connect' },
+  { id: 'vcard6',  name: 'Modern Edge' },
+  { id: 'vcard7',  name: 'Business Beacon' },
+  { id: 'vcard8',  name: 'Corporate Classic' },
+  { id: 'vcard9',  name: 'Corporate Identity' },
+  { id: 'vcard10', name: 'Musician & Artist' },
+  { id: 'vcard12', name: 'Financial Advisor' },
+  { id: 'vcard13', name: 'Architect' },
+  { id: 'vcard14', name: 'Yoga & Wellness' },
+  { id: 'vcard15', name: 'Digital Marketing' },
+  { id: 'vcard82', name: 'Lawyer Pro' },              // img vcard16
+  { id: 'vcard17', name: 'Wedding Planner' },
+  { id: 'vcard18', name: 'Dentist' },
+  { id: 'vcard19', name: 'CA & Accountant' },
+  { id: 'vcard20', name: 'School Teacher' },
+  { id: 'vcard21', name: 'Fashion Designer' },
+  { id: 'vcard22', name: 'Travel Agent' },
+  { id: 'vcard23', name: 'Automobile Dealer' },
+  { id: 'vcard24', name: 'Event Planner' },
+  { id: 'vcard25', name: 'Pharma & Medical' },
+  { id: 'vcard26', name: 'NGO & Social' },
+  { id: 'vcard27', name: 'Coaching Institute' },
+  { id: 'vcard28', name: 'Electrician & Contractor' },
+  { id: 'vcard29', name: 'Marriage Bureau' },
+  { id: 'vcard62', name: 'Taxi Service Pro' },        // img vcard30
+  { id: 'vcard51', name: 'Handyman Services Pro' },   // img vcard31
+  { id: 'vcard52', name: 'Interior Designer Pro' },   // img vcard32
+  { id: 'vcard33', name: 'Musician' },
+  { id: 'vcard34', name: 'Photographer' },
+  { id: 'vcard35', name: 'Real Estate Agent' },
+  { id: 'vcard66', name: 'Travel Agency Pro' },       // img vcard36
+  { id: 'vcard69', name: 'Flower Garden Pro' },       // img vcard37
+  { id: 'vcard71', name: 'Architecture Pro' },        // img vcard38
+  { id: 'vcard98', name: 'Royal Voyage Pro' },        // navy+gold travel (img vcard36)
 ];
 
 const TABS = [
@@ -63,34 +78,44 @@ const TABS = [
 ];
 
 const TEMPLATE_IMAGES = {
-  'vcard01': require('../../assets/template_01.png'),
-  'vcard02': require('../../assets/template_02.png'),
-  'vcard03': require('../../assets/template_03.png'),
-  'vcard04': require('../../assets/template_04.png'),
-  'vcard05': require('../../assets/template_05.png'),
-  'vcard06': require('../../assets/template_06.png'),
-  'vcard07': require('../../assets/template_07.png'),
-  'vcard08': require('../../assets/template_08.png'),
-  'vcard09': require('../../assets/template_09.png'),
-  'vcard10': require('../../assets/template_10.png'),
-  'vcard11': require('../../assets/template_11.png'),
-  'vcard12': require('../../assets/template_12.png'),
-  'vcard13': require('../../assets/template_13.png'),
-  'vcard14': require('../../assets/template_14.png'),
-  'vcard15': require('../../assets/template_15.png'),
-  'vcard16': require('../../assets/template_16.png'),
-  'vcard17': require('../../assets/template_17.png'),
-  'vcard18': require('../../assets/template_18.png'),
-  'vcard19': require('../../assets/template_19.png'),
-  'vcard20': require('../../assets/template_20.png'),
-  'vcard21': require('../../assets/template_21.png'),
-  'vcard22': require('../../assets/template_22.png'),
-  'vcard23': require('../../assets/template_23.png'),
-  'vcard24': require('../../assets/template_24.png'),
-  'vcard25': require('../../assets/template_25.png'),
-  'vcard26': require('../../assets/template_26.png'),
-  'vcard27': require('../../assets/template_27.png'),
-  'vcard28': require('../../assets/template_28.png'),
+  'vcard1':  require('../../assets/vcard1.png'),
+  'vcard2':  require('../../assets/vcard2.png'),
+  'vcard3':  require('../../assets/vcard3.png'),
+  'vcard4':  require('../../assets/vcard4.png'),
+  'vcard5':  require('../../assets/vcard5.png'),
+  'vcard6':  require('../../assets/vcard6.png'),
+  'vcard7':  require('../../assets/vcard7.png'),
+  'vcard8':  require('../../assets/vcard8.png'),
+  'vcard9':  require('../../assets/vcard9.png'),
+  'vcard10': require('../../assets/vcard10.png'),
+  'vcard12': require('../../assets/vcard12.png'),
+  'vcard13': require('../../assets/vcard13.png'),
+  'vcard14': require('../../assets/vcard14.png'),
+  'vcard15': require('../../assets/vcard15.png'),
+  'vcard82': require('../../assets/vcard16.png'),   // Lawyer Pro
+  'vcard17': require('../../assets/vcard17.png'),
+  'vcard18': require('../../assets/vcard18.png'),
+  'vcard19': require('../../assets/vcard19.png'),
+  'vcard20': require('../../assets/vcard20.png'),
+  'vcard21': require('../../assets/vcard21.png'),
+  'vcard22': require('../../assets/vcard22.png'),
+  'vcard23': require('../../assets/vcard23.png'),
+  'vcard24': require('../../assets/vcard24.png'),
+  'vcard25': require('../../assets/vcard25.png'),
+  'vcard26': require('../../assets/vcard26.png'),
+  'vcard27': require('../../assets/vcard27.png'),
+  'vcard28': require('../../assets/vcard28.png'),
+  'vcard29': require('../../assets/vcard29.png'),
+  'vcard62': require('../../assets/vcard30.png'),   // Taxi Service Pro
+  'vcard51': require('../../assets/vcard31.png'),   // Handyman Services Pro
+  'vcard52': require('../../assets/vcard32.png'),   // Interior Designer Pro
+  'vcard33': require('../../assets/vcard33.png'),
+  'vcard34': require('../../assets/vcard34.png'),
+  'vcard35': require('../../assets/vcard35.png'),
+  'vcard66': require('../../assets/vcard36.png'),   // Travel Agency Pro
+  'vcard69': require('../../assets/vcard37.png'),   // Flower Garden Pro
+  'vcard71': require('../../assets/vcard38.png'),   // Architecture Pro
+  'vcard98': require('../../assets/vcard36.png'),   // Royal Voyage Pro (navy+gold travel)
 };
 
 const defaultFormData = {
@@ -100,7 +125,7 @@ const defaultFormData = {
   description: '',
   cover_type: 'color',
   cover_color: '#f3f4f6',
-  template_id: 'vcard01',
+  template_id: 'vcard1',
   profile_image: null,
   cover_image: null,
   favicon_image: null,
@@ -1142,13 +1167,20 @@ export default function VcardsEditScreen() {
                   {/* Notch / Speaker */}
                   <View style={styles.mobileNotch} />
                   
-                  {/* Template Image */}
-                  <ScrollView style={styles.mobileScreen} showsVerticalScrollIndicator={false}>
-                    <Image 
-                      source={TEMPLATE_IMAGES[formData.template_id] || TEMPLATE_IMAGES['vcard01']} 
-                      style={styles.mobileScreenImage} 
-                      resizeMode="cover" 
-                    />
+                  {/* Template Image — full-length screenshot, scrollable inside the phone frame */}
+                  <ScrollView style={styles.mobileScreen} showsVerticalScrollIndicator={true}>
+                    {(() => {
+                      const previewSource = TEMPLATE_IMAGES[formData.template_id] || TEMPLATE_IMAGES['vcard1'];
+                      const meta = Image.resolveAssetSource(previewSource);
+                      const aspect = meta && meta.width && meta.height ? meta.width / meta.height : null;
+                      return (
+                        <Image
+                          source={previewSource}
+                          style={[styles.mobileScreenImage, aspect ? { aspectRatio: aspect } : { height: 1200 }]}
+                          resizeMode="cover"
+                        />
+                      );
+                    })()}
                   </ScrollView>
                 </View>
               </View>
@@ -2807,7 +2839,6 @@ const styles = StyleSheet.create({
   },
   mobileScreenImage: {
     width: '100%',
-    height: 1200, 
   },
   templatesCarousel: {
     paddingVertical: 15,

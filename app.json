@@ -1,8 +1,9 @@
 {
   "expo": {
     "name": "Tapify",
-    "slug": "tapify",
-    "version": "1.1.10",
+    "slug": "tapif-app",
+    "owner": "kbamnote",
+    "version": "1.1.11",
     "scheme": "tapifapp",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
@@ -19,7 +20,7 @@
       "package": "com.kbamnote.tapifapp",
       "icon": "./assets/app-icon.png",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 50,
+      "versionCode": 54,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
@@ -38,6 +39,12 @@
             "./assets/notification_sound.mpeg"
           ]
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Tapify to access your photos so you can upload images to your website."
+        }
       ]
     ],
     "web": {
@@ -45,7 +52,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "da1e4675-9f10-4b35-944c-6e4d8067e62d"
+        "projectId": "c8ffb44e-62c6-434b-8109-ec5c66568151"
       }
     }
   }

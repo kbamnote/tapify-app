@@ -64,7 +64,6 @@ export default function BoostAdsScreen() {
   const [languages, setLanguages] = useState([]);  // [{ key, name }]
 
   const [posting, setPosting] = useState(false);
-  const [insights, setInsights] = useState({});   // campaignId -> data
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
@@ -155,17 +154,6 @@ export default function BoostAdsScreen() {
       setError(e.message || 'Could not launch the boost.');
     } finally {
       setPosting(false);
-    }
-  };
-
-  const loadInsights = async (campaignId) => {
-    try {
-      const data = await ads.getInsights(campaignId);
-      // Meta returns no insights until an ad actually delivers, so distinguish
-      // "not started yet" (null) from real numbers rather than showing bare zeros.
-      setInsights((m) => ({ ...m, [campaignId]: data || { empty: true } }));
-    } catch (e) {
-      setInsights((m) => ({ ...m, [campaignId]: { error: e.message } }));
     }
   };
 
@@ -392,30 +380,20 @@ export default function BoostAdsScreen() {
       <Text style={[styles.section, { marginTop: 26 }]}>Your Boosts</Text>
       {campaigns.length === 0 ? (
         <Text style={styles.muted}>No boosts yet.</Text>
-      ) : campaigns.map((c) => {
-        const ins = insights[c.campaign_id];
-        return (
+      ) : campaigns.map((c) => (
           <View key={c.id} style={styles.campCard}>
             <View style={styles.campHead}>
               <Text style={[styles.campStatus, { color: c.status === 'active' ? '#059669' : c.status === 'failed' ? '#dc2626' : '#b45309' }]}>{(c.status || '').toUpperCase()}</Text>
               <Text style={styles.campDate}>₹{c.budget_inr} · {c.duration_days}d</Text>
             </View>
             <View style={styles.campActions}>
-              <TouchableOpacity onPress={() => loadInsights(c.campaign_id)}><Text style={styles.campAction}>📊 Insights</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => navigate('ad-insights', { campaign: c })}><Text style={styles.campAction}>📊 Insights</Text></TouchableOpacity>
               {c.status !== 'failed' && (
                 <TouchableOpacity onPress={() => toggle(c)}><Text style={styles.campAction}>{c.status === 'active' ? '⏸ Pause' : '▶️ Resume'}</Text></TouchableOpacity>
               )}
             </View>
-            {ins?.empty && (
-              <Text style={styles.insText}>No data yet — your ad is still starting. Insights appear once it begins delivering (usually within a few hours).</Text>
-            )}
-            {ins && !ins.error && !ins.empty && (
-              <Text style={styles.insText}>Spend ₹{ins.spend || 0} · Reach {ins.reach || 0} · Impr {ins.impressions || 0} · Clicks {ins.clicks || 0}</Text>
-            )}
-            {ins?.error && <Text style={styles.insErr}>{ins.error}</Text>}
           </View>
-        );
-      })}
+        ))}
     </ScrollView>
   );
 }
@@ -484,6 +462,4 @@ const styles = StyleSheet.create({
   campDate: { fontSize: 12, color: COLORS.textMuted },
   campActions: { flexDirection: 'row', gap: 18, marginTop: 8 },
   campAction: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
-  insText: { fontSize: 12, color: COLORS.text, marginTop: 8, fontWeight: '500' },
-  insErr: { fontSize: 12, color: '#dc2626', marginTop: 8 },
 });

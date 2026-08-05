@@ -29,6 +29,7 @@ import GoogleBusinessScreen from './src/screens/GoogleBusinessScreen';
 import SocialScreen from './src/screens/SocialScreen';
 import WalletScreen from './src/screens/WalletScreen';
 import BoostAdsScreen from './src/screens/BoostAdsScreen';
+import AdInsightsScreen from './src/screens/AdInsightsScreen';
 import ReviewsScreen from './src/screens/ReviewsScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import BusinessesScreen from './src/screens/BusinessesScreen';
@@ -41,6 +42,8 @@ import AdminLeadsScreen from './src/screens/AdminLeadsScreen';
 import WebsiteOrdersScreen from './src/screens/WebsiteOrdersScreen';
 import WebsiteAppointmentsScreen from './src/screens/WebsiteAppointmentsScreen';
 import WebsiteInquiriesScreen from './src/screens/WebsiteInquiriesScreen';
+import WebsiteFeedbackScreen from './src/screens/WebsiteFeedbackScreen';
+import WhatsAppScreen from './src/screens/WhatsAppScreen';
 import WebsiteBuilderScreen from './src/screens/WebsiteBuilderScreen';
 import SiteEditorScreen from './src/screens/SiteEditorScreen';
 
@@ -89,6 +92,8 @@ function ScreenRenderer() {
       return <WalletScreen />;
     case 'boost-ads':
       return <BoostAdsScreen />;
+    case 'ad-insights':
+      return <AdInsightsScreen />;
     case 'reviews-funnel':
       return <ReviewsScreen />;
     case 'notifications':
@@ -113,6 +118,10 @@ function ScreenRenderer() {
       return <WebsiteAppointmentsScreen />;
     case 'website-inquiries':
       return <WebsiteInquiriesScreen />;
+    case 'website-feedback':
+      return <WebsiteFeedbackScreen />;
+    case 'whatsapp':
+      return <WhatsAppScreen />;
     case 'website-builder':
       return <WebsiteBuilderScreen />;
     case 'site-editor':
@@ -165,6 +174,7 @@ function MainLayout() {
       case 'social': return 'Social Media';
       case 'wallet': return 'Wallet';
       case 'boost-ads': return 'Boost Ads';
+      case 'ad-insights': return 'Ad Insights';
       case 'reviews-funnel': return 'Reviews Funnel';
       case 'notifications': return 'Notification Center';
       case 'businesses':      return 'Business Directory';
@@ -177,6 +187,8 @@ function MainLayout() {
       case 'website-orders':       return '🛒 Website Orders';
       case 'website-appointments': return '📆 Website Appointments';
       case 'website-inquiries':    return '📨 Website Inquiries';
+      case 'website-feedback':     return '⭐ Website Feedback';
+      case 'whatsapp':             return '💬 WhatsApp';
       case 'website-builder':      return '🌐 Website Builder';
       case 'site-editor':          return params?.name ? `✎ ${params.name}` : 'Edit Website';
       default: return 'Tapify';

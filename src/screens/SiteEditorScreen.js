@@ -26,10 +26,10 @@ import { useNavigation } from '../context/NavigationContext';
 const SCALAR = ['text', 'textarea', 'toggle', 'number', 'select', 'link'];
 const liveUrl = (slug) => `https://${slug}.tapify.co.in`;
 
-// A media field is editable in the app when it can hold an image (video-only
-// slots stay on the web editor). Everything else complex (repeater/crop/…) too.
-const isImageMedia = (f) => f.type === 'media' && (!Array.isArray(f.accept) || f.accept.includes('image'));
-const isEditable = (f) => SCALAR.includes(f.type) || isImageMedia(f);
+// Any media field (image or video) is editable in-app; MediaField picks the
+// right picker type from field.accept. Other complex types (repeater/crop/…) too.
+const isMediaField = (f) => f.type === 'media';
+const isEditable = (f) => SCALAR.includes(f.type) || isMediaField(f);
 
 // Resolve a stored value ("media:<id>" or a full URL) to a previewable URL.
 const mediaPreview = (v) => {
@@ -45,31 +45,42 @@ const mediaPreview = (v) => {
  * (the parent uses an uncontrolled docRef for smooth typing).
  */
 function MediaField({ field, value, onChange, siteId }) {
+  const kinds = Array.isArray(field.accept) && field.accept.length ? field.accept : ['image'];
+  const videoOnly = kinds.includes('video') && !kinds.includes('image');
+  const allowsVideo = kinds.includes('video');
+
   const [local, setLocal] = useState(value);
   const [busy, setBusy]   = useState(false);
+  const [isVid, setIsVid] = useState(videoOnly && !!value);
   // Reflect external value changes (e.g. a repeater item being reordered). At
   // section level `value` never changes (uncontrolled docRef), so this is inert.
-  useEffect(() => { setLocal(value); }, [value]);
+  useEffect(() => { setLocal(value); setIsVid(videoOnly && !!value); }, [value]);
   const preview = mediaPreview(local);
 
   const pick = async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert('Permission needed', 'Allow photo access to upload an image.'); return; }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions ? ImagePicker.MediaTypeOptions.Images : ['images'],
-        quality: 0.85,
-      });
+      if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access to upload a file.'); return; }
+      const MT = ImagePicker.MediaTypeOptions;
+      const mediaTypes = MT
+        ? (videoOnly ? MT.Videos : allowsVideo ? MT.All : MT.Images)
+        : (videoOnly ? ['videos'] : allowsVideo ? ['images', 'videos'] : ['images']);
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes, quality: 0.85 });
       if (res.canceled) return;
       const asset = res.assets[0];
+      const vid = asset.type === 'video' || /^video\//.test(asset.mimeType || '');
       setBusy(true);
       const form = new FormData();
-      form.append('file', { uri: asset.uri, name: asset.fileName || 'photo.jpg', type: asset.mimeType || 'image/jpeg' });
+      form.append('file', {
+        uri: asset.uri,
+        name: asset.fileName || (vid ? 'video.mp4' : 'photo.jpg'),
+        type: asset.mimeType || (vid ? 'video/mp4' : 'image/jpeg'),
+      });
       if (siteId) form.append('site_id', String(siteId));
       const up = await fetchApi('/api/sites/media.php', { method: 'POST', body: form });
       const ref = up.data?.ref;
-      if (ref) { setLocal(ref); onChange(ref); }
-      else Alert.alert('Upload failed', 'The server did not return an image reference.');
+      if (ref) { setLocal(ref); setIsVid(vid); onChange(ref); }
+      else Alert.alert('Upload failed', 'The server did not return a media reference.');
     } catch (e) {
       Alert.alert('Upload failed', e.message);
     } finally {
@@ -77,19 +88,24 @@ function MediaField({ field, value, onChange, siteId }) {
     }
   };
 
-  const remove = () => { setLocal(''); onChange(''); };
+  const remove = () => { setLocal(''); setIsVid(false); onChange(''); };
+  const uploadLabel = local ? 'Replace' : videoOnly ? 'Upload video' : allowsVideo ? 'Upload file' : 'Upload image';
 
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{field.label || field.key}</Text>
-      {preview
-        ? <Image source={{ uri: preview }} style={styles.mediaPreview} resizeMode="cover" />
-        : <View style={styles.mediaEmpty}><Text style={styles.mediaEmptyText}>No image</Text></View>}
+      {local && isVid ? (
+        <View style={styles.mediaVideo}><Text style={styles.mediaVideoText}>🎬  Video uploaded</Text></View>
+      ) : preview ? (
+        <Image source={{ uri: preview }} style={styles.mediaPreview} resizeMode="cover" />
+      ) : (
+        <View style={styles.mediaEmpty}><Text style={styles.mediaEmptyText}>{videoOnly ? 'No video' : 'No image'}</Text></View>
+      )}
       <View style={styles.mediaActions}>
         <TouchableOpacity style={[styles.mediaBtn, styles.mediaUpload]} onPress={pick} disabled={busy}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.mediaUploadText}>{preview ? 'Replace' : 'Upload image'}</Text>}
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.mediaUploadText}>{uploadLabel}</Text>}
         </TouchableOpacity>
-        {preview ? (
+        {local ? (
           <TouchableOpacity style={[styles.mediaBtn, styles.mediaRemove]} onPress={remove} disabled={busy}>
             <Text style={styles.mediaRemoveText}>Remove</Text>
           </TouchableOpacity>
@@ -788,6 +804,8 @@ const styles = StyleSheet.create({
   mediaPreview: { width: '100%', height: 150, borderRadius: 10, backgroundColor: '#eee' },
   mediaEmpty: { width: '100%', height: 90, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fafafa' },
   mediaEmptyText: { fontSize: 12.5, color: COLORS.textMuted },
+  mediaVideo: { width: '100%', height: 90, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(21,62,63,0.06)', borderWidth: 1, borderColor: COLORS.border },
+  mediaVideoText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
   mediaActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   mediaBtn: { flex: 1, height: 40, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   mediaUpload: { backgroundColor: COLORS.primary },

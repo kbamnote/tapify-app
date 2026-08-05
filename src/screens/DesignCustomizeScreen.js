@@ -13,7 +13,6 @@ import {
   Keyboard,
   PanResponder,
   Animated,
-  Share,
   Switch,
   Alert
 } from 'react-native';
@@ -22,7 +21,7 @@ import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
 import ViewShot from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+import Share from 'react-native-share';
 import * as MediaLibrary from 'expo-media-library';
 
 const { width } = Dimensions.get('window');
@@ -111,21 +110,30 @@ export default function DesignCustomizeScreen() {
   const [activeTab, setActiveTab] = useState('logo');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [includeProfileLink, setIncludeProfileLink] = useState(false);
-  const [profileLink, setProfileLink] = useState(null);
+  const [includeWebsiteLink, setIncludeWebsiteLink] = useState(false);
+  const [websiteLink, setWebsiteLink] = useState(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchWebsiteLink = async () => {
       try {
-        const response = await fetchApi('/api/me.php');
-        if (response.success && response.data?.vcard?.url_alias) {
-          setProfileLink(`https://app.tapify.co.in/${response.data.vcard.url_alias}`);
+        // Prefer the website-builder site link (a published site); fall back to
+        // the vCard link when the user has no live website yet.
+        const sitesRes = await fetchApi('/api/sites/list.php');
+        const sites = sitesRes.data?.sites || [];
+        const site = sites.find((s) => s.published_at);   // list is newest-first
+        if (site?.slug) {
+          setWebsiteLink(`https://${site.slug}.tapify.co.in`);
+          return;
+        }
+        const meRes = await fetchApi('/api/me.php');
+        if (meRes.success && meRes.data?.vcard?.url_alias) {
+          setWebsiteLink(`https://app.tapify.co.in/${meRes.data.vcard.url_alias}`);
         }
       } catch (error) {
-        console.log('Failed to fetch profile link:', error);
+        console.log('Failed to fetch website link:', error);
       }
     };
-    fetchProfile();
+    fetchWebsiteLink();
   }, []);
 
   useEffect(() => {
@@ -216,46 +224,22 @@ export default function DesignCustomizeScreen() {
       }
       const uri = await viewRef.current.capture();
 
-      const hasLink = includeProfileLink && profileLink;
-      const linkSuffix = hasLink ? `\n\nView my profile: ${profileLink}` : '';
+      const hasLink = includeWebsiteLink && websiteLink;
+      const message = hasLink
+        ? `Check out my design from Tapify!\n\nView my website: ${websiteLink}`
+        : 'Check out my design from Tapify!';
 
-      // ── iOS: Share.share() supports url + message in one dialog ───────────
-      if (Platform.OS === 'ios') {
-        await Share.share({
-          message: `Check out my design from Tapify!${linkSuffix}`,
-          url: uri,
-        });
-        return;
-      }
-
-      // ── Android ────────────────────────────────────────────────────────────
-      const isAvailable = await Sharing.isAvailableAsync();
-
-      if (isAvailable) {
-        // Share the image file
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/jpeg',
-          dialogTitle: 'Share Design',
-          UTI: 'public.jpeg',
-        });
-        // After image share, automatically share the profile link if toggled on
-        // (separate Share.share call — Android cannot combine file + text in one intent)
-        if (hasLink) {
-          await Share.share({
-            message: `View my Tapify profile: ${profileLink}`,
-            title: 'Share Profile Link',
-          });
-        }
-      } else {
-        // Fallback for devices where file sharing is unavailable:
-        // Share as plain text so the link still gets through
-        await Share.share({
-          message: hasLink
-            ? `Check out my design on Tapify!${linkSuffix}`
-            : 'Check out my design on Tapify!',
-          title: 'Share from Tapify',
-        });
-      }
+      // One share sheet: the image file AND the message (profile link) go out
+      // together. react-native-share builds a single share intent (EXTRA_STREAM +
+      // EXTRA_TEXT on Android; a file + text activity item on iOS), so WhatsApp
+      // & co. receive the image with a tappable link caption in one step —
+      // no more "image first, then a second sheet for the link".
+      await Share.open({
+        title: 'Share Design',
+        message,
+        url: uri,
+        type: 'image/jpeg',
+      });
     } catch (e) {
       // Don't show an error if the user simply dismissed the share sheet
       const msg = e?.message || '';
@@ -611,14 +595,14 @@ export default function DesignCustomizeScreen() {
         <View style={styles.actionsContainer}>
           <Text style={styles.helpText}>Download saves to your gallery. Share sends to WhatsApp/Socials.</Text>
           
-          {profileLink && (
-            <View style={styles.profileLinkToggleRow}>
-              <Text style={styles.profileLinkToggleText}>Include Profile Link when sharing</Text>
-              <Switch 
-                value={includeProfileLink} 
-                onValueChange={setIncludeProfileLink}
+          {websiteLink && (
+            <View style={styles.websiteLinkToggleRow}>
+              <Text style={styles.websiteLinkToggleText}>Include Website Link when sharing</Text>
+              <Switch
+                value={includeWebsiteLink}
+                onValueChange={setIncludeWebsiteLink}
                 trackColor={{ false: '#e2e8f0', true: COLORS.primary }}
-                thumbColor={includeProfileLink ? '#fff' : '#f4f3f4'}
+                thumbColor={includeWebsiteLink ? '#fff' : '#f4f3f4'}
               />
             </View>
           )}
@@ -731,8 +715,8 @@ const styles = StyleSheet.create({
 
   // Actions
   actionsContainer: { padding: 16, backgroundColor: COLORS.surface, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border },
-  profileLinkToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 4, paddingHorizontal: 4 },
-  profileLinkToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  websiteLinkToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 4, paddingHorizontal: 4 },
+  websiteLinkToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   buttonsRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
   actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
   downloadBtn: { backgroundColor: '#fff', borderColor: COLORS.border },

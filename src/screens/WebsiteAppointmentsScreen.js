@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, View, Text, TouchableOpacity,
-  ActivityIndicator, Alert, FlatList, Linking, ScrollView,
+  StyleSheet, View, Text, TextInput, TouchableOpacity,
+  ActivityIndicator, Alert, FlatList, Linking, ScrollView, Modal,
 } from 'react-native';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
@@ -84,6 +84,40 @@ export default function WebsiteAppointmentsScreen() {
   const call = (p) => p && Linking.openURL(`tel:${p}`);
   const whatsapp = (p) => p && Linking.openURL(`https://wa.me/${String(p).replace(/\D/g, '')}`);
 
+  // ---- reschedule ----
+  const [reschedFor, setReschedFor] = useState(null);   // the appointment being moved
+  const [rDate, setRDate] = useState('');
+  const [rTime, setRTime] = useState('');
+  const [rBusy, setRBusy] = useState(false);
+
+  const openReschedule = (row) => {
+    setReschedFor(row);
+    setRDate(row.appointment_date || '');
+    setRTime(row.time_formatted || '');
+  };
+  const doReschedule = async () => {
+    if (!reschedFor) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rDate.trim())) { Alert.alert('Date', 'Enter the date as YYYY-MM-DD.'); return; }
+    if (!rTime.trim()) { Alert.alert('Time', 'Enter a time (e.g. 10:30 AM).'); return; }
+    try {
+      setRBusy(true);
+      const res = await fetchApi('/api/sites/appointments.php', {
+        method: 'POST',
+        body: JSON.stringify({ id: reschedFor.id, action: 'reschedule', date: rDate.trim(), time: rTime.trim() }),
+      });
+      const nd = res.data || {};
+      setRows((prev) => prev.map((r) => (r.id === reschedFor.id
+        ? { ...r, appointment_date: nd.appointment_date || rDate.trim(), status: 'confirmed', date_formatted: nd.appointment_date || rDate.trim(), time_formatted: rTime.trim() }
+        : r)));
+      setReschedFor(null);
+      Alert.alert('Rescheduled', 'The appointment has been moved.');
+    } catch (e) {
+      Alert.alert('Could not reschedule', e.message);
+    } finally {
+      setRBusy(false);
+    }
+  };
+
   const shown = filter ? rows.filter((r) => r.status === filter) : rows;
 
   const renderItem = ({ item }) => (
@@ -122,6 +156,10 @@ export default function WebsiteAppointmentsScreen() {
           );
         })}
       </View>
+
+      <TouchableOpacity style={styles.reschedBtn} onPress={() => openReschedule(item)}>
+        <Text style={styles.reschedText}>🗓  Reschedule</Text>
+      </TouchableOpacity>
 
       {item.customer_phone ? (
         <View style={styles.actions}>
@@ -167,6 +205,30 @@ export default function WebsiteAppointmentsScreen() {
           ListEmptyComponent={<View style={styles.centered}><Text style={styles.emptyText}>No appointments yet</Text></View>}
         />
       )}
+
+      {/* Reschedule modal */}
+      <Modal visible={!!reschedFor} transparent animationType="fade" onRequestClose={() => setReschedFor(null)}>
+        <View style={styles.mBackdrop}>
+          <View style={styles.mCard}>
+            <Text style={styles.mTitle}>Reschedule appointment</Text>
+            {reschedFor ? <Text style={styles.mSub}>{reschedFor.customer_name || 'Customer'}</Text> : null}
+            <Text style={styles.mLabel}>Date (YYYY-MM-DD)</Text>
+            <TextInput style={styles.mInput} value={rDate} onChangeText={setRDate}
+              placeholder="2026-08-01" placeholderTextColor={COLORS.textMuted} autoCapitalize="none" />
+            <Text style={styles.mLabel}>Time</Text>
+            <TextInput style={styles.mInput} value={rTime} onChangeText={setRTime}
+              placeholder="10:30 AM" placeholderTextColor={COLORS.textMuted} />
+            <View style={styles.mBtns}>
+              <TouchableOpacity style={[styles.mBtn, styles.mCancel]} onPress={() => setReschedFor(null)} disabled={rBusy}>
+                <Text style={styles.mCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.mBtn, styles.mSave]} onPress={doReschedule} disabled={rBusy}>
+                {rBusy ? <ActivityIndicator color="#fff" /> : <Text style={styles.mSaveText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -182,6 +244,22 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   tabText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
   tabTextActive: { color: '#fff' },
+
+  reschedBtn: { marginTop: 12, height: 40, borderRadius: 10, borderWidth: 1, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(21,62,63,0.04)' },
+  reschedText: { fontSize: 13.5, fontWeight: '700', color: COLORS.primary },
+
+  mBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  mCard: { width: '100%', backgroundColor: COLORS.surface, borderRadius: 16, padding: 20 },
+  mTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  mSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
+  mLabel: { fontSize: 12.5, fontWeight: '700', color: COLORS.text, marginTop: 14, marginBottom: 6 },
+  mInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: COLORS.text },
+  mBtns: { flexDirection: 'row', gap: 12, marginTop: 18 },
+  mBtn: { flex: 1, height: 46, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  mCancel: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
+  mCancelText: { fontSize: 14, fontWeight: '700', color: COLORS.textMuted },
+  mSave: { backgroundColor: COLORS.primary },
+  mSaveText: { fontSize: 14, fontWeight: '800', color: '#fff' },
 
   card: { padding: 16, marginBottom: 12 },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },

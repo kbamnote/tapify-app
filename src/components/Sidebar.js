@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,9 +9,11 @@ import {
 } from 'react-native';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
+import { fetchApi } from '../config';
 
 const NAV_ITEMS = [
   { id: 'ai-growth',        label: 'AI Growth Center', icon: '🤖' },
+  { id: 'whatsapp',         label: 'WhatsApp',         icon: '💬' },
   { id: 'social',           label: 'Social Media',     icon: '📣' },
   { id: 'boost-ads',        label: 'Boost Ads',        icon: '📈' },
   { id: 'wallet',           label: 'Wallet',           icon: '💰' },
@@ -36,6 +38,23 @@ export default function Sidebar() {
   const isTitanium = user?.titanium?.is_active == 1 || user?.titanium?.is_active === true;
   const isAdmin    = user?.role === 'admin';
 
+  // "Feedback" only shows for users who added a Feedback section to a site.
+  const [hasFeedback, setHasFeedback] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchApi('/api/sites/features.php')
+      .then((r) => { if (alive) setHasFeedback(!!r.data?.feedback); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Insert Feedback right after Inquiries, only when the user uses it.
+  const navItems = hasFeedback
+    ? NAV_ITEMS.flatMap((it) => (it.id === 'website-inquiries'
+        ? [it, { id: 'website-feedback', label: 'Feedback', icon: '⭐' }]
+        : [it]))
+    : NAV_ITEMS;
+
   if (!sidebarOpen) return null;
 
   return (
@@ -56,7 +75,7 @@ export default function Sidebar() {
 
         {/* Nav Links */}
         <ScrollView style={styles.navArea} showsVerticalScrollIndicator={false}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = currentScreen === item.id;
             return (
               <TouchableOpacity

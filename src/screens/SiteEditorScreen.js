@@ -59,8 +59,6 @@ function MediaField({ field, value, onChange, siteId }) {
 
   const pick = async () => {
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access to upload a file.'); return; }
       const MT = ImagePicker.MediaTypeOptions;
       const mediaTypes = MT
         ? (videoOnly ? MT.Videos : allowsVideo ? MT.All : MT.Images)

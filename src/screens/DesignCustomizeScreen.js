@@ -255,7 +255,7 @@ export default function DesignCustomizeScreen() {
 
   const handleDownload = async () => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== 'granted') {
         alert('Permission required to save images to your gallery.');
         return;

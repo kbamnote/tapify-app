@@ -3,7 +3,7 @@
     "name": "Tapify",
     "slug": "tapif-app",
     "owner": "kbamnote",
-    "version": "1.1.12",
+    "version": "1.1.13",
     "scheme": "tapifapp",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
@@ -20,11 +20,16 @@
       "package": "com.kbamnote.tapifapp",
       "icon": "./assets/app-icon.png",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 56,
+      "versionCode": 58,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
       ]
     },
     "plugins": [
@@ -44,6 +49,14 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow Tapify to access your photos so you can upload images to your website."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Allow Tapify to save your designs and QR codes to your gallery.",
+          "photosPermission": "Allow Tapify to save your designs and QR codes to your gallery.",
+          "granularPermissions": []
         }
       ]
     ],

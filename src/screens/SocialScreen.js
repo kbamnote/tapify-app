@@ -111,11 +111,6 @@ export default function SocialScreen() {
 
   // ── Composer ─────────────────────────────────────────────────────────────────
   const pickMedia = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow photo/video access to attach media.');
-      return;
-    }
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 0.7 });
     if (res.canceled || !res.assets?.length) return;
     const a = res.assets[0];

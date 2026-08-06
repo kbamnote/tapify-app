@@ -393,7 +393,7 @@ export default function VcardsEditScreen() {
 
   const downloadQR = async () => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Allow gallery access to save QR code.');
         return;
@@ -519,11 +519,6 @@ export default function VcardsEditScreen() {
 
   const pickAndUploadImageFor = async (type, targetId, onDone) => {
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert('Permission Required', 'Allow gallery access to choose photos.');
-        return;
-      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -674,12 +669,6 @@ export default function VcardsEditScreen() {
 
   const handlePickImage = async (type) => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
-        Alert.alert("Permission Required", "You need to allow library access to choose photos.");
-        return;
-      }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -1799,8 +1788,6 @@ export default function VcardsEditScreen() {
                           <TouchableOpacity
                             disabled={isUploading}
                             onPress={async () => {
-                              const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                              if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose photos.'); return; }
                               const res = await ImagePicker.launchImageLibraryAsync({
                                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                                 allowsEditing: false,
@@ -2112,8 +2099,6 @@ export default function VcardsEditScreen() {
                   <Text style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6 }}>Service Image</Text>
                   <TouchableOpacity
                     onPress={async () => {
-                      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                      if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose a photo.'); return; }
                       const res = await ImagePicker.launchImageLibraryAsync({
                         mediaTypes: ImagePicker.MediaTypeOptions.Images,
                         allowsEditing: true, aspect: [1, 1], quality: 0.8,
@@ -2141,8 +2126,6 @@ export default function VcardsEditScreen() {
                   <Text style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6 }}>Service Image</Text>
                   <TouchableOpacity
                     onPress={async () => {
-                      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                      if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose a photo.'); return; }
                       const res = await ImagePicker.launchImageLibraryAsync({
                         mediaTypes: ImagePicker.MediaTypeOptions.Images,
                         allowsEditing: true, aspect: [1, 1], quality: 0.8,
@@ -2175,8 +2158,6 @@ export default function VcardsEditScreen() {
                   <Text style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 6 }}>Product Image</Text>
                   <TouchableOpacity
                     onPress={async () => {
-                      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                      if (!perm.granted) { Alert.alert('Permission Required', 'Allow gallery access to choose a photo.'); return; }
                       const res = await ImagePicker.launchImageLibraryAsync({
                         mediaTypes: ImagePicker.MediaTypeOptions.Images,
                         allowsEditing: true, aspect: [1, 1], quality: 0.8,

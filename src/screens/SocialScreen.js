@@ -37,6 +37,7 @@ export default function SocialScreen() {
   const [iosPickerVisible, setIosPickerVisible] = useState(false);
 
   const [posts, setPosts] = useState([]);
+  const [engagement, setEngagement] = useState(null);  // { totals, by_post }
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -61,7 +62,18 @@ export default function SocialScreen() {
     finally { setLoadingPosts(false); }
   }, []);
 
-  useEffect(() => { loadConnections(); loadPosts(); }, [loadConnections, loadPosts]);
+  // Engagement is a separate call on purpose: it reaches out to Facebook and
+  // Instagram, so it must never hold up (or fail) the post list.
+  const loadEngagement = useCallback(async () => {
+    try { setEngagement(await social.getEngagement()); }
+    catch (e) { /* counts are optional — keep whatever we already showed */ }
+  }, []);
+
+  useEffect(() => {
+    loadConnections();
+    loadPosts();
+    loadEngagement();
+  }, [loadConnections, loadPosts, loadEngagement]);
 
   // Deep-link return from the OAuth browser flow.
   useEffect(() => {
@@ -77,9 +89,9 @@ export default function SocialScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadConnections(), loadPosts()]);
+    await Promise.all([loadConnections(), loadPosts(), loadEngagement()]);
     setRefreshing(false);
-  }, [loadConnections, loadPosts]);
+  }, [loadConnections, loadPosts, loadEngagement]);
 
   // ── Connections ─────────────────────────────────────────────────────────────
   const connect = async (platform) => {
@@ -339,28 +351,70 @@ export default function SocialScreen() {
               <ActivityIndicator color={COLORS.primary} style={{ marginTop: 30 }} />
             ) : posts.length === 0 ? (
               <View style={styles.empty}><Text style={styles.emptyIcon}>🕘</Text><Text style={styles.muted}>No posts yet.</Text></View>
-            ) : posts.map((p) => (
-              <View key={p.id} style={styles.postCard}>
-                <View style={styles.postHead}>
-                  <Text style={[styles.postStatus, { color: STATUS_COLOR[p.status] || COLORS.textMuted }]}>{(p.status || '').toUpperCase()}</Text>
-                  <Text style={styles.postDate}>
-                    {p.status === 'scheduled' && p.scheduled_at ? `for ${fmtUTC(p.scheduled_at)}` : fmtUTC(p.published_at || p.created_at)}
-                  </Text>
-                </View>
-                {!!p.caption && <Text style={styles.postCaption} numberOfLines={3}>{p.caption}</Text>}
-                {Array.isArray(p.media) && p.media.length > 0 && (
-                  <Text style={styles.postMedia}>{p.media.length} media attached</Text>
+            ) : (
+              <>
+                {engagement?.totals?.posts > 0 && (
+                  <View style={styles.statsRow}>
+                    {[
+                      ['👍', engagement.totals.likes,    'Likes'],
+                      ['💬', engagement.totals.comments, 'Comments'],
+                      ['🔁', engagement.totals.shares,   'Shares'],
+                    ].map(([icon, val, label]) => (
+                      <View key={label} style={styles.statCard}>
+                        <Text style={styles.statValue}>{icon} {val}</Text>
+                        <Text style={styles.statLabel}>{label}</Text>
+                      </View>
+                    ))}
+                  </View>
                 )}
-                <View style={styles.targets}>
-                  {(p.targets || []).map((t, i) => (
-                    <Text key={i} style={styles.target}>
-                      {platformIcon(t.platform)} {t.account_name || t.platform}: <Text style={{ color: STATUS_COLOR[t.status] || COLORS.textMuted, fontWeight: '700' }}>{t.status}</Text>
-                      {t.error ? ` — ${t.error}` : ''}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            ))}
+                {engagement?.totals?.posts > 0 && (
+                  <Text style={styles.statsNote}>
+                    Across {engagement.totals.posts} published post{engagement.totals.posts === 1 ? '' : 's'} · updates every 30 min
+                  </Text>
+                )}
+
+                {posts.map((p) => {
+                  // by_post is a PHP-encoded object keyed by post id, so the
+                  // lookup key is a string even though p.id is a number.
+                  const metricsFor = (engagement?.by_post?.[String(p.id)]) || [];
+                  return (
+                    <View key={p.id} style={styles.postCard}>
+                      <View style={styles.postHead}>
+                        <Text style={[styles.postStatus, { color: STATUS_COLOR[p.status] || COLORS.textMuted }]}>{(p.status || '').toUpperCase()}</Text>
+                        <Text style={styles.postDate}>
+                          {p.status === 'scheduled' && p.scheduled_at ? `for ${fmtUTC(p.scheduled_at)}` : fmtUTC(p.published_at || p.created_at)}
+                        </Text>
+                      </View>
+                      {!!p.caption && <Text style={styles.postCaption} numberOfLines={3}>{p.caption}</Text>}
+                      {Array.isArray(p.media) && p.media.length > 0 && (
+                        <Text style={styles.postMedia}>{p.media.length} media attached</Text>
+                      )}
+                      <View style={styles.targets}>
+                        {(p.targets || []).map((t, i) => {
+                          // Match on target id, not platform+name — a customer can
+                          // connect two Pages with the same name.
+                          const m = metricsFor.find((x) => x.target_id === t.target_id)?.metrics;
+                          return (
+                            <View key={i}>
+                              <Text style={styles.target}>
+                                {platformIcon(t.platform)} {t.account_name || t.platform}: <Text style={{ color: STATUS_COLOR[t.status] || COLORS.textMuted, fontWeight: '700' }}>{t.status}</Text>
+                                {t.error ? ` — ${t.error}` : ''}
+                              </Text>
+                              {!!m && (
+                                <Text style={styles.targetMetrics}>
+                                  👍 {m.likes ?? 0}   💬 {m.comments ?? 0}
+                                  {m.shares !== null && m.shares !== undefined ? `   🔁 ${m.shares}` : ''}
+                                </Text>
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                })}
+              </>
+            )}
           </>
         )}
       </ScrollView>
@@ -434,6 +488,15 @@ const styles = StyleSheet.create({
   postCaption: { fontSize: 14, color: COLORS.text, lineHeight: 20, marginBottom: 6 },
   postMedia: { fontSize: 11, color: COLORS.textMuted, marginBottom: 8 },
   targets: { borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 8, gap: 4 },
+  targetMetrics: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, marginBottom: 4, letterSpacing: 0.3 },
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  statCard: {
+    flex: 1, backgroundColor: COLORS.surface, borderRadius: 12, borderWidth: 1,
+    borderColor: COLORS.border, paddingVertical: 12, alignItems: 'center',
+  },
+  statValue: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  statLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+  statsNote: { fontSize: 11, color: COLORS.textMuted, marginBottom: 12, textAlign: 'center' },
   target: { fontSize: 12, color: COLORS.text },
 
   empty: { alignItems: 'center', paddingVertical: 50 },

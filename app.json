@@ -3,7 +3,7 @@
     "name": "Tapify",
     "slug": "tapif-app",
     "owner": "kbamnote",
-    "version": "1.1.13",
+    "version": "1.1.14",
     "scheme": "tapifapp",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
@@ -14,13 +14,19 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.kbamnote.tapifapp",
+      "buildNumber": "2",
+      "supportsTablet": false,
+      "icon": "./assets/ios-icon.png",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.kbamnote.tapifapp",
       "icon": "./assets/app-icon.png",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 58,
+      "versionCode": 59,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",

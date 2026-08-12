@@ -60,3 +60,13 @@ export async function getPosts(limit = 30) {
   const r = await fetchApi(`/api/social/posts.php?limit=${limit}`);
   return r.data?.posts || [];
 }
+
+/**
+ * Likes/comments/shares for posts published through Tapify.
+ * { totals:{likes,comments,shares,posts}, targets:[...], by_post:{ [postId]: [...] } }
+ * by_post arrives from PHP as an object keyed by post id, not an array.
+ */
+export async function getEngagement() {
+  const r = await fetchApi('/api/social/engagement.php');
+  return r.data || { totals: null, targets: [], by_post: {} };
+}

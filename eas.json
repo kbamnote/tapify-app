@@ -16,6 +16,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "abid.printworld@gmail.com",
+        "appleTeamId": "8SU93Y2VSB"
+      }
+    }
   }
 }

@@ -26,6 +26,7 @@ import MyDesignsScreen from './src/screens/MyDesignsScreen';
 import DesignCustomizeScreen from './src/screens/DesignCustomizeScreen';
 import AiGrowthScreen from './src/screens/AiGrowthScreen';
 import GoogleBusinessScreen from './src/screens/GoogleBusinessScreen';
+import GoogleReviewsScreen from './src/screens/GoogleReviewsScreen';
 import SocialScreen from './src/screens/SocialScreen';
 import WalletScreen from './src/screens/WalletScreen';
 import BoostAdsScreen from './src/screens/BoostAdsScreen';
@@ -86,6 +87,8 @@ function ScreenRenderer() {
       return <AiGrowthScreen />;
     case 'google-business':
       return <GoogleBusinessScreen />;
+    case 'google-reviews':
+      return <GoogleReviewsScreen />;
     case 'social':
       return <SocialScreen />;
     case 'wallet':
@@ -171,6 +174,7 @@ function MainLayout() {
       case 'design-customize': return 'Customize Design';
       case 'ai-growth': return 'AI Growth Center';
       case 'google-business': return 'Google Business Profile';
+      case 'google-reviews': return 'Google Reviews';
       case 'social': return 'Social Media';
       case 'wallet': return 'Wallet';
       case 'boost-ads': return 'Boost Ads';

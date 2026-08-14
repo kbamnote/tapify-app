@@ -20,9 +20,18 @@ const STATUS_STYLES = {
   missing: { color: '#dc2626', bg: '#fef2f2', icon: '❌' },
 };
 
-/** Small labelled block with its own Copy button (sections / review replies). */
-function SectionBlock({ label, text }) {
+/**
+ * Small labelled block with its own Copy button (sections / review replies).
+ *
+ * When the section declares an `apply` target it also gets an Apply button that
+ * writes the text into the real field. That button is the difference between a
+ * text generator and a product — without it the customer copies, leaves, finds
+ * the right field and pastes, which is where most of them stop.
+ */
+function SectionBlock({ label, text, apply, onApply, applying, applied }) {
   if (!text) return null;
+  const busy = applying === apply?.field;
+  const done = applied === apply?.field;
   return (
     <View style={styles.sectionBlock}>
       <View style={styles.sectionHeader}>
@@ -32,17 +41,37 @@ function SectionBlock({ label, text }) {
         </TouchableOpacity>
       </View>
       <Text style={styles.sectionText}>{text}</Text>
+      {!!apply && !!onApply && (
+        <TouchableOpacity
+          style={[styles.applyBtn, done && styles.applyBtnDone, busy && { opacity: 0.6 }]}
+          disabled={busy || done}
+          onPress={() => onApply(apply, text)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.applyBtnText, done && styles.applyBtnTextDone]}>
+            {busy ? 'Applying…' : done ? '✅ Applied to Google' : `⬆️  ${apply.label || 'Apply'}`}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
-function ResultBody({ tool, result }) {
+function ResultBody({ tool, result, onApply, applying, applied }) {
   switch (tool.render) {
     case 'sections':
       return (
         <View>
           {(tool.sections || []).map((s) => (
-            <SectionBlock key={s.key} label={s.label} text={(result[s.key] || '').toString().trim()} />
+            <SectionBlock
+              key={s.key}
+              label={s.label}
+              text={(result[s.key] || '').toString().trim()}
+              apply={s.apply}
+              onApply={onApply}
+              applying={applying}
+              applied={applied}
+            />
           ))}
         </View>
       );
@@ -137,7 +166,7 @@ function ResultBody({ tool, result }) {
   }
 }
 
-export default function AiResultView({ tool, result, meta, onRegenerate, onSaveToggle, isSaved, onOpenHistory, saving, loading }) {
+export default function AiResultView({ tool, result, meta, onRegenerate, onSaveToggle, isSaved, onOpenHistory, saving, loading, onApply, applying, applied }) {
   const fullText = resultToText(tool, result);
   const canSave = !!meta?.history_id;
 
@@ -175,7 +204,7 @@ export default function AiResultView({ tool, result, meta, onRegenerate, onSaveT
         </Text>
       )}
 
-      <ResultBody tool={tool} result={result} />
+      <ResultBody tool={tool} result={result} onApply={onApply} applying={applying} applied={applied} />
     </View>
   );
 }
@@ -208,6 +237,13 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 13, fontWeight: '800', color: COLORS.primary, flex: 1 },
   miniCopy: { fontSize: 12, fontWeight: '700', color: COLORS.accent },
   sectionText: { fontSize: 14, color: COLORS.text, lineHeight: 21 },
+  applyBtn: {
+    marginTop: 10, backgroundColor: COLORS.primary, borderRadius: 8,
+    paddingVertical: 10, alignItems: 'center',
+  },
+  applyBtnDone: { backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#059669' },
+  applyBtnText: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+  applyBtnTextDone: { color: '#059669' },
 
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {

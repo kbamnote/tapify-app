@@ -8,6 +8,12 @@
 //
 // input.type:  'text' (default) | 'textarea' | 'toggle'
 // render:      'sections' | 'keywords' | 'list' | 'faq' | 'checklist'
+//
+// section.apply: makes a generated block writable straight into the real field
+//   it was written for, instead of leaving the customer to copy and paste it.
+//   { to: 'gbp', field: '<editable GBP field>', label, confirm }
+//   'gbp' fields must be one of FieldMap::editableFields() on the backend —
+//   business_name, description, phone, website — or the write is rejected.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const AI_TOOLS = [
@@ -26,7 +32,18 @@ export const AI_TOOLS = [
     ],
     render: 'sections',
     sections: [
-      { key: 'google_description', label: 'Google Business Description' },
+      {
+        key: 'google_description',
+        label: 'Google Business Description',
+        // The one field where generate → apply is a closed loop today: it is
+        // editable on Google, and it is the single biggest scoring item.
+        apply: {
+          to: 'gbp',
+          field: 'description',
+          label: 'Apply to Google',
+          confirm: 'This replaces the description on your live Google Business Profile. Continue?',
+        },
+      },
       { key: 'about_us', label: 'Website About Us' },
       { key: 'short_description', label: 'Short Description' },
       { key: 'professional_summary', label: 'Professional Summary' },

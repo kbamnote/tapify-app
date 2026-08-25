@@ -27,6 +27,12 @@ import DesignCustomizeScreen from './src/screens/DesignCustomizeScreen';
 import AiGrowthScreen from './src/screens/AiGrowthScreen';
 import GoogleBusinessScreen from './src/screens/GoogleBusinessScreen';
 import GoogleReviewsScreen from './src/screens/GoogleReviewsScreen';
+import RequestReviewScreen from './src/screens/RequestReviewScreen';
+import BusinessInsightsScreen from './src/screens/BusinessInsightsScreen';
+import GoogleQuestionsScreen from './src/screens/GoogleQuestionsScreen';
+import GooglePostsScreen from './src/screens/GooglePostsScreen';
+import BusinessAttributesScreen from './src/screens/BusinessAttributesScreen';
+import BusinessServicesScreen from './src/screens/BusinessServicesScreen';
 import SocialScreen from './src/screens/SocialScreen';
 import WalletScreen from './src/screens/WalletScreen';
 import BoostAdsScreen from './src/screens/BoostAdsScreen';
@@ -89,6 +95,18 @@ function ScreenRenderer() {
       return <GoogleBusinessScreen />;
     case 'google-reviews':
       return <GoogleReviewsScreen />;
+    case 'request-review':
+      return <RequestReviewScreen />;
+    case 'business-insights':
+      return <BusinessInsightsScreen />;
+    case 'google-questions':
+      return <GoogleQuestionsScreen />;
+    case 'google-posts':
+      return <GooglePostsScreen />;
+    case 'business-attributes':
+      return <BusinessAttributesScreen />;
+    case 'business-services':
+      return <BusinessServicesScreen />;
     case 'social':
       return <SocialScreen />;
     case 'wallet':
@@ -175,6 +193,11 @@ function MainLayout() {
       case 'ai-growth': return 'AI Growth Center';
       case 'google-business': return 'Google Business Profile';
       case 'google-reviews': return 'Google Reviews';
+      case 'request-review': return 'Request a Review';
+      case 'business-insights': return 'Performance';
+      case 'google-questions': return 'Questions & Answers';
+      case 'business-attributes': return 'Business Attributes';
+      case 'business-services': return 'Services';
       case 'social': return 'Social Media';
       case 'wallet': return 'Wallet';
       case 'boost-ads': return 'Boost Ads';

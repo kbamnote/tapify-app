@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Modal, View, Text, TouchableOpacity, StyleSheet, Linking, ActivityIndicator,
+  Modal, View, Text, TouchableOpacity, StyleSheet, Linking, ActivityIndicator, Platform,
 } from 'react-native';
 import { COLORS } from '../theme/colors';
 import { checkForUpdate, ANDROID_PACKAGE } from '../services/appUpdate';
@@ -8,8 +8,12 @@ import { checkForUpdate, ANDROID_PACKAGE } from '../services/appUpdate';
 /**
  * Self-contained update prompt. Drop <UpdatePopup /> once near the app root.
  * On mount it asks the backend if a newer build is live; if so it shows a modal.
- * "Update Now" opens the Play Store; "Maybe Later" dismisses (hidden when the
- * update is mandatory / force = true).
+ * "Update Now" opens this platform's own store; "Maybe Later" dismisses (hidden
+ * when the update is mandatory / force = true).
+ *
+ * checkForUpdate() only returns a URL belonging to the running platform, and
+ * returns null when there is none — so on iOS, until an App Store listing is
+ * configured on the backend, this component renders nothing at all.
  */
 export default function UpdatePopup() {
   const [info, setInfo] = useState(null);
@@ -29,11 +33,18 @@ export default function UpdatePopup() {
 
   const openStore = async () => {
     setOpening(true);
-    const market = `market://details?id=${ANDROID_PACKAGE}`;
-    const web = info?.url || `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
+    // info.url is already the correct store for this platform — never fall back
+    // to a Play Store link, which on iOS would push the user to a rival store.
+    const web = info?.url;
+    if (!web) { setOpening(false); return; }
+    // The native scheme opens the store app directly instead of the browser.
+    // market:// is Android-only; itms-apps:// is its iOS counterpart.
+    const native = Platform.OS === 'android'
+      ? `market://details?id=${ANDROID_PACKAGE}`
+      : web.replace(/^https?:\/\//, 'itms-apps://');
     try {
-      const canMarket = await Linking.canOpenURL(market);
-      await Linking.openURL(canMarket ? market : web);
+      const canNative = await Linking.canOpenURL(native);
+      await Linking.openURL(canNative ? native : web);
     } catch (e) {
       try { await Linking.openURL(web); } catch (_) {}
     } finally {

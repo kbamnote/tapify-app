@@ -31,18 +31,6 @@ export function resultToText(tool, result) {
       return list.map((f, i) => `Q${i + 1}: ${f.question}\nA: ${f.answer}`).join('\n\n');
     }
 
-    case 'checklist': {
-      const lines = [];
-      if (typeof result.score === 'number') lines.push(`Profile Score: ${result.score}/100`);
-      if (result.summary) lines.push(result.summary);
-      lines.push('');
-      (result.checklist || []).forEach((item) => {
-        const mark = item.status === 'good' ? '✅' : item.status === 'missing' ? '❌' : '⚠️';
-        lines.push(`${mark} [${(item.priority || '').toUpperCase()}] ${item.area}\n   ${item.suggestion || ''}`);
-      });
-      return lines.join('\n');
-    }
-
     default:
       try {
         return JSON.stringify(result, null, 2);

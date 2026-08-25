@@ -11,12 +11,19 @@ import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import { fetchApi } from '../config';
 
+// Wallet top-ups need the react-native-razorpay SDK, which is not installed yet
+// (see WalletScreen's own note). Until it is, the screen can show a balance but
+// the Top Up button cannot open a checkout — a dead end a store reviewer will
+// find and reject under "Guideline 2.1 — Bugs". Flip this to true in the same
+// change that adds the SDK, and the menu entry comes back.
+const PAYMENTS_ENABLED = false;
+
 const NAV_ITEMS = [
   { id: 'ai-growth',        label: 'AI Growth Center', icon: '🤖' },
   { id: 'whatsapp',         label: 'WhatsApp',         icon: '💬' },
   { id: 'social',           label: 'Social Media',     icon: '📣' },
   { id: 'boost-ads',        label: 'Boost Ads',        icon: '📈' },
-  { id: 'wallet',           label: 'Wallet',           icon: '💰' },
+  ...(PAYMENTS_ENABLED ? [{ id: 'wallet', label: 'Wallet', icon: '💰' }] : []),
   { id: 'businesses',       label: 'Businesses',       icon: '🏢' },
   { id: 'website-orders',   label: 'Orders',           icon: '🛒' },
   { id: 'website-inquiries', label: 'Inquiries',       icon: '📨' },

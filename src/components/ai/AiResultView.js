@@ -14,12 +14,6 @@ async function handleCopy(text) {
   if (r.ok) notify(r.method === 'share' ? 'Shared' : 'Copied to clipboard');
 }
 
-const STATUS_STYLES = {
-  good: { color: '#059669', bg: '#ecfdf5', icon: '✅' },
-  needs_improvement: { color: '#b45309', bg: '#fffbeb', icon: '⚠️' },
-  missing: { color: '#dc2626', bg: '#fef2f2', icon: '❌' },
-};
-
 /**
  * Small labelled block with its own Copy button (sections / review replies).
  *
@@ -134,33 +128,6 @@ function ResultBody({ tool, result, onApply, applying, applied }) {
       );
     }
 
-    case 'checklist':
-      return (
-        <View>
-          {typeof result.score === 'number' && (
-            <View style={styles.scoreCard}>
-              <Text style={styles.scoreNum}>{result.score}<Text style={styles.scoreOutOf}>/100</Text></Text>
-              <Text style={styles.scoreLabel}>Profile Score</Text>
-            </View>
-          )}
-          {!!result.summary && <Text style={styles.summary}>{result.summary}</Text>}
-          {(result.checklist || []).map((item, i) => {
-            const st = STATUS_STYLES[item.status] || STATUS_STYLES.needs_improvement;
-            return (
-              <View key={i} style={[styles.checkItem, { backgroundColor: st.bg }]}>
-                <View style={styles.checkHeader}>
-                  <Text style={styles.checkArea}>{st.icon}  {item.area}</Text>
-                  <View style={[styles.priorityBadge, { borderColor: st.color }]}>
-                    <Text style={[styles.priorityText, { color: st.color }]}>{(item.priority || '').toUpperCase()}</Text>
-                  </View>
-                </View>
-                {!!item.suggestion && <Text style={styles.checkSuggestion}>{item.suggestion}</Text>}
-              </View>
-            );
-          })}
-        </View>
-      );
-
     default:
       return <Text style={styles.sectionText}>{JSON.stringify(result)}</Text>;
   }
@@ -263,19 +230,4 @@ const styles = StyleSheet.create({
 
   faqQ: { fontSize: 14, fontWeight: '800', color: COLORS.primary, marginBottom: 6 },
   faqA: { fontSize: 13.5, color: COLORS.text, lineHeight: 20 },
-
-  scoreCard: {
-    alignItems: 'center', backgroundColor: COLORS.primary, borderRadius: 16,
-    paddingVertical: 18, marginBottom: 14,
-  },
-  scoreNum: { fontSize: 40, fontWeight: '900', color: '#fff' },
-  scoreOutOf: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
-  scoreLabel: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 1, textTransform: 'uppercase' },
-  summary: { fontSize: 14, color: COLORS.text, lineHeight: 21, marginBottom: 14, fontWeight: '500' },
-  checkItem: { borderRadius: 12, padding: 14, marginBottom: 10 },
-  checkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  checkArea: { fontSize: 14, fontWeight: '800', color: COLORS.text, flex: 1, paddingRight: 8 },
-  priorityBadge: { borderWidth: 1.5, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  priorityText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-  checkSuggestion: { fontSize: 13, color: COLORS.text, lineHeight: 19 },
 });

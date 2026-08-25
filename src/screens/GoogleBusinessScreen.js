@@ -6,6 +6,7 @@ import {
 import { COLORS } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
 import * as gbp from '../services/googleBusinessApi';
+import GbpPhotoUploader from '../components/GbpPhotoUploader';
 
 const EDITABLE_META = [
   { key: 'business_name', label: 'Business Name', multiline: false },
@@ -273,6 +274,33 @@ export default function GoogleBusinessScreen() {
             </View>
           ))}
 
+          {/* Parts of the listing that need their own editor rather than a
+              text box — a toggle list and a repeating list respectively. */}
+          {[
+            { route: 'business-services', icon: '🛠', title: 'Services',
+              sub: 'What you offer, with prices. Each one is another search you can appear in.' },
+            { route: 'business-attributes', icon: '☑️', title: 'Attributes',
+              sub: 'Parking, accessibility, payment methods — the filters customers narrow by.' },
+          ].map((l) => (
+            <TouchableOpacity
+              key={l.route}
+              style={styles.subLink}
+              activeOpacity={0.85}
+              onPress={() => navigate(l.route)}
+            >
+              <Text style={styles.subLinkIcon}>{l.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subLinkTitle}>{l.title}</Text>
+                <Text style={styles.subLinkSub}>{l.sub}</Text>
+              </View>
+              <Text style={styles.subLinkChevron}>›</Text>
+            </TouchableOpacity>
+          ))}
+
+          {/* Photos — the one profile field Google won't let us PATCH, so it
+              gets its own uploader rather than a text input. */}
+          <GbpPhotoUploader />
+
           <TouchableOpacity style={styles.linkBtn} onPress={doDisconnect} disabled={busy}>
             <Text style={styles.linkBtnText}>Disconnect Google Business Profile</Text>
           </TouchableOpacity>
@@ -321,6 +349,16 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '700', color: COLORS.primary, marginBottom: 6 },
   input: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: 'rgba(21,62,63,0.12)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: COLORS.text },
   textarea: { minHeight: 110, paddingTop: 12 },
+
+  subLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', borderRadius: 12, borderWidth: 1,
+    borderColor: COLORS.border, padding: 14, marginTop: 10,
+  },
+  subLinkIcon: { fontSize: 20 },
+  subLinkTitle: { fontSize: 14, fontWeight: '800', color: COLORS.primary },
+  subLinkSub: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, lineHeight: 16 },
+  subLinkChevron: { fontSize: 24, color: COLORS.textMuted },
 
   roHeader: { fontSize: 12, fontWeight: '800', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 24, marginBottom: 10 },
   roRow: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 12, marginBottom: 8 },

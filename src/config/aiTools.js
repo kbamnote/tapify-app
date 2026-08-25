@@ -7,21 +7,38 @@
 // read from this config — nothing else needs to change.
 //
 // input.type:  'text' (default) | 'textarea' | 'toggle'
-// render:      'sections' | 'keywords' | 'list' | 'faq' | 'checklist'
+// render:      'sections' | 'keywords' | 'list' | 'faq'
 //
 // section.apply: makes a generated block writable straight into the real field
 //   it was written for, instead of leaving the customer to copy and paste it.
 //   { to: 'gbp', field: '<editable GBP field>', label, confirm }
 //   'gbp' fields must be one of FieldMap::editableFields() on the backend —
 //   business_name, description, phone, website — or the write is rejected.
+//
+// ── WHAT BELONGS HERE ────────────────────────────────────────────────────────
+// Only tools whose output ends up somewhere real. Every card must finish in a
+// change to the live Google listing, either through an `apply` target or, for
+// review replies, by being posted from the Google Reviews screen.
+//
+// Removed for failing that test, in order:
+//   improvement-suggestions — asked the customer to self-report seven yes/no
+//     facts the profile score now reads off the live listing, and the answers
+//     were often wrong, so the AI advised against a fiction.
+//   keywords, taglines, service-description, faq — Google has no field for any
+//     of them, so the output could only ever be copied out of the app and
+//     pasted somewhere we don't control.
+//
+// Their endpoints (api/ai/keywords.php, taglines.php, service-description.php,
+// faq.php, improvement-suggestions.php) are left on the server, unused, so past
+// history rows stay readable and re-adding a card is a config change. Do not add
+// a card back without an apply target — that is the whole rule.
 // ─────────────────────────────────────────────────────────────────────────────
-
 export const AI_TOOLS = [
   {
     key: 'business-description',
     title: 'Business Description',
     icon: '📝',
-    blurb: 'Google description, About Us & summaries',
+    blurb: 'Write your Google Business description',
     endpoint: '/api/ai/business-description.php',
     inputs: [
       { name: 'business_name', label: 'Business Name', required: true, placeholder: 'e.g. Sharma Dental Care' },
@@ -35,8 +52,8 @@ export const AI_TOOLS = [
       {
         key: 'google_description',
         label: 'Google Business Description',
-        // The one field where generate → apply is a closed loop today: it is
-        // editable on Google, and it is the single biggest scoring item.
+        // The one field where generate → apply is a closed loop: it is editable
+        // on Google, and it is the single biggest scoring item.
         apply: {
           to: 'gbp',
           field: 'description',
@@ -44,66 +61,6 @@ export const AI_TOOLS = [
           confirm: 'This replaces the description on your live Google Business Profile. Continue?',
         },
       },
-      { key: 'about_us', label: 'Website About Us' },
-      { key: 'short_description', label: 'Short Description' },
-      { key: 'professional_summary', label: 'Professional Summary' },
-    ],
-  },
-  {
-    key: 'keywords',
-    title: 'SEO Keywords',
-    icon: '🔍',
-    blurb: 'Primary, local & voice-search keywords',
-    endpoint: '/api/ai/keywords.php',
-    inputs: [
-      { name: 'business_name', label: 'Business Name', required: true, placeholder: 'e.g. Sharma Dental Care' },
-      { name: 'category', label: 'Category', required: true, placeholder: 'e.g. Dental Clinic' },
-      { name: 'city', label: 'City', placeholder: 'e.g. Nagpur' },
-      { name: 'services', label: 'Services', type: 'textarea', placeholder: 'Root canal, braces, teeth whitening…' },
-    ],
-    render: 'keywords',
-    groups: [
-      { key: 'primary', label: 'Primary Keywords' },
-      { key: 'secondary', label: 'Secondary Keywords' },
-      { key: 'long_tail', label: 'Long Tail Keywords' },
-      { key: 'local_seo', label: 'Local SEO Keywords' },
-      { key: 'voice_search', label: 'Voice Search Keywords' },
-    ],
-  },
-  {
-    key: 'taglines',
-    title: 'Taglines',
-    icon: '💡',
-    blurb: '10 professional taglines for your brand',
-    endpoint: '/api/ai/taglines.php',
-    inputs: [
-      { name: 'business_name', label: 'Business Name', required: true, placeholder: 'e.g. Sharma Dental Care' },
-      { name: 'category', label: 'Category', required: true, placeholder: 'e.g. Dental Clinic' },
-      { name: 'city', label: 'City', placeholder: 'e.g. Nagpur' },
-      { name: 'services', label: 'Services', type: 'textarea', placeholder: 'Root canal, braces, teeth whitening…' },
-      { name: 'target_customers', label: 'Target Customers', type: 'textarea', placeholder: 'Families, working professionals…' },
-    ],
-    render: 'list',
-    listKey: 'taglines',
-  },
-  {
-    key: 'service-description',
-    title: 'Service Descriptions',
-    icon: '🛠',
-    blurb: 'SEO title + short & long descriptions',
-    endpoint: '/api/ai/service-description.php',
-    inputs: [
-      { name: 'service_name', label: 'Service Name', required: true, placeholder: 'e.g. Root Canal Treatment' },
-      { name: 'business_name', label: 'Business Name', placeholder: 'e.g. Sharma Dental Care' },
-      { name: 'category', label: 'Category', placeholder: 'e.g. Dental Clinic' },
-      { name: 'city', label: 'City', placeholder: 'e.g. Nagpur' },
-    ],
-    render: 'sections',
-    sections: [
-      { key: 'title', label: 'Professional Title' },
-      { key: 'seo_description', label: 'SEO Description' },
-      { key: 'short_version', label: 'Short Version' },
-      { key: 'long_version', label: 'Long Version' },
     ],
   },
   {
@@ -123,42 +80,6 @@ export const AI_TOOLS = [
       { key: 'formal', label: 'Formal' },
       { key: 'short', label: 'Short' },
     ],
-  },
-  {
-    key: 'faq',
-    title: 'FAQ Generator',
-    icon: '❓',
-    blurb: '10 FAQs with answers for your category',
-    endpoint: '/api/ai/faq.php',
-    inputs: [
-      { name: 'business_name', label: 'Business Name', required: true, placeholder: 'e.g. Sharma Dental Care' },
-      { name: 'category', label: 'Category', required: true, placeholder: 'e.g. Dental Clinic' },
-      { name: 'city', label: 'City', placeholder: 'e.g. Nagpur' },
-      { name: 'services', label: 'Services', type: 'textarea', placeholder: 'Root canal, braces, teeth whitening…' },
-    ],
-    render: 'faq',
-    listKey: 'faqs',
-  },
-  {
-    key: 'improvement-suggestions',
-    title: 'Improvement Suggestions',
-    icon: '📈',
-    blurb: 'Actionable checklist to grow your profile',
-    endpoint: '/api/ai/improvement-suggestions.php',
-    inputs: [
-      { name: 'business_name', label: 'Business Name', required: true, placeholder: 'e.g. Sharma Dental Care' },
-      { name: 'category', label: 'Category', placeholder: 'e.g. Dental Clinic' },
-      { name: 'city', label: 'City', placeholder: 'e.g. Nagpur' },
-      { name: 'services', label: 'Services', type: 'textarea', placeholder: 'Root canal, braces, teeth whitening…' },
-      { name: 'has_description', label: 'Has a business description', type: 'toggle' },
-      { name: 'has_logo', label: 'Has a logo', type: 'toggle' },
-      { name: 'has_cover_image', label: 'Has a cover image', type: 'toggle' },
-      { name: 'has_contact', label: 'Has contact details', type: 'toggle' },
-      { name: 'has_website', label: 'Has a website', type: 'toggle' },
-      { name: 'has_business_hours', label: 'Has business hours', type: 'toggle' },
-      { name: 'has_keywords', label: 'Has SEO keywords', type: 'toggle' },
-    ],
-    render: 'checklist',
   },
 ];
 

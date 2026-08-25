@@ -199,9 +199,14 @@ export default function SettingsScreen() {
               {planData?.subscription_expires ? `Next billing date: ${formatDate(planData.subscription_expires)}` : 'No active subscription'}
             </Text>
             
-            <TouchableOpacity style={styles.manageBtn}>
-              <Text style={styles.manageBtnText}>Manage Subscription</Text>
-            </TouchableOpacity>
+            {/* No "Manage Subscription" button.
+                It had no onPress at all, so it was a dead control — a Guideline
+                2.1 bug on its own. Giving it a destination would be worse: any
+                route to buying or renewing outside the app is exactly what
+                Guideline 3.1.1 forbids, and 3.1.1 is what this app was just
+                rejected under. Plans are provisioned by the Tapify team, so the
+                card stays informational: it reports status and offers no way to
+                transact. */}
           </GlassCard>
         )}
 

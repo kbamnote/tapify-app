@@ -7,19 +7,39 @@ import { generate as generateAi, setSaved as apiSetSaved } from '../services/aiA
 import {
   getStatus as getGbpStatus,
   getFields as getGbpFields,
-  getScore as getGbpScore,
+  getMarketingScore as getGbpScore,
   updateFields as updateGbpFields,
 } from '../services/googleBusinessApi';
+import MarketingGauge, { bandColor } from '../components/gbp/MarketingGauge';
+import { getCached as getCachedGbp, isStale as isGbpStale, setCache as setGbpCache } from '../services/gbpCache';
 import AiToolForm from '../components/ai/AiToolForm';
 import AiResultView from '../components/ai/AiResultView';
 import AiHistorySheet from '../components/ai/AiHistorySheet';
 
-const bandColor = (band) => ({
-  excellent: '#059669',
-  good: '#0d9488',
-  'needs work': '#b45309',
-  poor: '#dc2626',
-}[band] || COLORS.primary);
+// A score item's `fix_in` → the screen that fixes it. Every item MarketingScore
+// can dock a point for has an entry here: a gap with nowhere to go is what makes
+// a score feel arbitrary. Anything unlisted still falls back to the listing
+// editor, so a new item can never dead-end.
+const FIX_ROUTES = {
+  google_business:  'google-business',
+  google_reviews:   'google-reviews',
+  request_review:   'request-review',
+  google_posts:     'google-posts',
+  google_questions: 'google-questions',
+  services:         'business-services',
+  attributes:       'business-attributes',
+  social:           'social',
+  website:          'website-builder',
+  ai_tool:          'google-business',
+};
+
+// Photos live inside the listing editor, not on a screen of their own.
+const FIX_LABEL = {
+  request_review: 'Ask',
+  google_posts: 'Post',
+  social: 'Share',
+  website: 'Build',
+};
 
 /**
  * Seed common fields, preferring the connected Google listing over the local
@@ -57,15 +77,39 @@ export default function AiGrowthScreen() {
   // Google Business Profile. Held on this screen so the banner reflects the real
   // connection state instead of always inviting a connect that already happened,
   // and so every tool can prefill from the live listing.
-  const [gbp, setGbp] = useState({ connected: false, location: null, fields: null, score: null, loading: true });
+  // Seed from the cached snapshot so returning to this screen paints the
+  // connected state instantly. Without this the screen refetched on every
+  // visit — and getScore() alone fans out to several Google calls, so a glance
+  // at this page cost four requests and a spinner over a connection the
+  // customer had already made.
+  const cached = getCachedGbp();
+  const [gbp, setGbp] = useState(
+    cached
+      ? { ...cached, loading: false }
+      : { connected: false, location: null, fields: null, score: null, loading: true }
+  );
   const [applying, setApplying] = useState(null);   // field currently being written
   const [applied, setApplied] = useState(null);     // field written in this session
 
-  const loadGbp = useCallback(async () => {
+  /**
+   * @param force  true from pull-to-refresh and after a write, which skips the
+   *               freshness check entirely.
+   */
+  const loadGbp = useCallback(async (force = false) => {
+    // Fresh enough already: keep what is on screen and make no request at all.
+    if (!force && !isGbpStale()) return;
+
+    // Revalidating behind an existing snapshot must not flash a spinner over
+    // it — only show loading when there is genuinely nothing to display.
+    const hadSnapshot = !!getCachedGbp();
+    if (!hadSnapshot) setGbp((p) => ({ ...p, loading: true }));
+
     try {
       const status = await getGbpStatus();
       if (!status?.connected) {
-        setGbp({ connected: false, location: null, fields: null, score: null, loading: false });
+        const next = { connected: false, location: null, fields: null, score: null };
+        setGbpCache(next);
+        setGbp({ ...next, loading: false });
         return;
       }
       // Fields and score are further calls to Google. A failure in either must
@@ -74,13 +118,19 @@ export default function AiGrowthScreen() {
       let fields = null, score = null;
       try { fields = (await getGbpFields())?.fields ?? null; } catch (e) { /* prefill only */ }
       try { score = await getGbpScore(); } catch (e) { /* score is additive */ }
-      setGbp({ connected: true, location: status.location ?? null, fields, score, loading: false });
+      const next = { connected: true, location: status.location ?? null, fields, score };
+      setGbpCache(next);
+      setGbp({ ...next, loading: false });
     } catch (e) {
-      setGbp({ connected: false, location: null, fields: null, score: null, loading: false });
+      // A failed revalidation must not wipe a good snapshot off the screen —
+      // showing "Connect" to someone who is connected is the exact bug this
+      // screen had before. Keep what we have and try again next time.
+      if (hadSnapshot) setGbp((p) => ({ ...p, loading: false }));
+      else setGbp({ connected: false, location: null, fields: null, score: null, loading: false });
     }
   }, []);
 
-  useEffect(() => { loadGbp(); }, [loadGbp]);
+  useEffect(() => { loadGbp(false); }, [loadGbp]);
 
   /**
    * Write a generated block into the real field it was written for.
@@ -98,9 +148,24 @@ export default function AiGrowthScreen() {
           // that visible jump is the point of the whole loop.
           setGbp((p) => ({ ...p, fields: res?.fields ?? p.fields }));
           setApplied(apply.field);
+          // No need to write the cache back here: updateFields() already
+          // invalidated it, so the next visit refetches from Google. Trying to
+          // rebuild a snapshot from inside this callback would need a ref to
+          // current state and could only ever produce a partial one.
           try { setGbp((p) => ({ ...p, score: null })); const s = await getGbpScore(); setGbp((p) => ({ ...p, score: s })); }
           catch (e) { /* the write succeeded; a stale score is not worth an error */ }
-          Alert.alert('Applied', 'Your Google Business Profile has been updated.');
+
+          // Google caps descriptions at 750 characters and forbids URLs, so the
+          // server cleans the text before sending. Say so rather than letting
+          // the customer wonder why what they published is shorter.
+          const stored = res?.fields?.[apply.field];
+          const trimmed = typeof stored === 'string' && stored.length < text.length - 2;
+          Alert.alert(
+            'Applied',
+            trimmed
+              ? 'Your Google Business Profile has been updated. Google limits descriptions to 750 characters and does not allow links, so the text was shortened to fit.'
+              : 'Your Google Business Profile has been updated.'
+          );
         }
       } catch (e) {
         Alert.alert('Could not apply', e?.message || 'Please try again.');
@@ -232,20 +297,32 @@ export default function AiGrowthScreen() {
           <Text style={styles.gbpChevron}>›</Text>
         </TouchableOpacity>
 
-        {gbp.connected && (
+        {/* Everything that acts on the live listing. Performance sits first —
+            it is the only one that answers "is any of this working?". */}
+        {gbp.connected && [
+          { route: 'business-insights', icon: '📈', title: 'Performance',
+            sub: 'Calls, direction taps and views, and how they are trending.' },
+          { route: 'google-reviews', icon: '⭐', title: 'Google Reviews',
+            sub: 'Read, reply with AI, request reviews, or reply automatically.' },
+          { route: 'google-questions', icon: '❓', title: 'Questions & Answers',
+            sub: 'Answer what customers ask, and post your own FAQs.' },
+          { route: 'google-posts', icon: '📣', title: 'Google Posts',
+            sub: 'Weekly updates that show up right on your listing.' },
+        ].map((l) => (
           <TouchableOpacity
+            key={l.route}
             style={styles.reviewsLink}
             activeOpacity={0.85}
-            onPress={() => navigate('google-reviews')}
+            onPress={() => navigate(l.route)}
           >
-            <Text style={styles.reviewsIcon}>⭐</Text>
+            <Text style={styles.reviewsIcon}>{l.icon}</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.reviewsTitle}>Google Reviews</Text>
-              <Text style={styles.reviewsSub}>Read, reply with AI, or turn on automatic replies.</Text>
+              <Text style={styles.reviewsTitle}>{l.title}</Text>
+              <Text style={styles.reviewsSub}>{l.sub}</Text>
             </View>
-            <Text style={styles.gbpChevron}>›</Text>
+            <Text style={styles.linkChevron}>›</Text>
           </TouchableOpacity>
-        )}
+        ))}
 
         {gbp.connected && gbp.fields && (
           <Text style={styles.gbpPrefillNote}>
@@ -253,63 +330,82 @@ export default function AiGrowthScreen() {
           </Text>
         )}
 
-        {/* Profile health score. Shown only when connected — a score with no
-            listing behind it would be a number we made up. */}
+        {/* Marketing score. Shown only when connected — a score with no listing
+            behind it would be a number we made up.
+
+            This replaced the old profile-health bar. That one measured whether
+            the listing was filled in, which is a question that gets answered
+            once: everyone reached 100 and then had no reason to open the screen
+            again. This one measures activity, so it moves both ways. */}
         {gbp.connected && gbp.score && (
           <View style={styles.scoreCard}>
-            <View style={styles.scoreHead}>
-              <View>
-                <Text style={styles.scoreLabel}>Profile health</Text>
-                <View style={styles.scoreRow}>
-                  <Text style={[styles.scoreValue, { color: bandColor(gbp.score.band) }]}>
-                    {gbp.score.score}
+            <View style={styles.gaugeWrap}>
+              <MarketingGauge score={gbp.score.score} band={gbp.score.band} />
+
+              <View style={styles.gaugeMeta}>
+                <View style={[styles.scoreBadge, { backgroundColor: bandColor(gbp.score.band) }]}>
+                  <Text style={styles.scoreBadgeText}>{gbp.score.band}</Text>
+                </View>
+                {typeof gbp.score.delta === 'number' && gbp.score.delta !== 0 && (
+                  <Text style={[styles.scoreDelta, { color: gbp.score.delta > 0 ? '#4ade80' : '#fbbf24' }]}>
+                    {gbp.score.delta > 0 ? `▲ ${gbp.score.delta}` : `▼ ${Math.abs(gbp.score.delta)}`}
+                    <Text style={styles.scoreSince}> since last check</Text>
                   </Text>
-                  <Text style={styles.scoreOutOf}>/ 100</Text>
-                  {typeof gbp.score.delta === 'number' && gbp.score.delta !== 0 && (
-                    <Text style={[styles.scoreDelta, { color: gbp.score.delta > 0 ? '#059669' : '#b45309' }]}>
-                      {gbp.score.delta > 0 ? `▲ ${gbp.score.delta}` : `▼ ${Math.abs(gbp.score.delta)}`}
+                )}
+              </View>
+            </View>
+
+            <View style={styles.scoreBody}>
+              {!!gbp.score.summary && <Text style={styles.scoreSummary}>{gbp.score.summary}</Text>}
+
+              {/* Where the points are, before the list of what to do about it. */}
+              {(gbp.score.groups || []).map((g) => (
+                <View key={g.group} style={styles.groupRow}>
+                  <Text style={styles.groupName}>{g.group}</Text>
+                  <View style={styles.groupTrack}>
+                    <View style={[styles.groupFill, {
+                      width: `${g.points > 0 ? Math.round((g.earned / g.points) * 100) : 0}%`,
+                      backgroundColor: bandColor(gbp.score.band),
+                    }]} />
+                  </View>
+                  <Text style={styles.groupPts}>{g.earned}/{g.points}</Text>
+                </View>
+              ))}
+
+              {(gbp.score.items || []).filter((i) => i.status !== 'good').map((item) => (
+                <View key={item.key} style={styles.scoreItem}>
+                  <Text style={styles.scoreItemIcon}>{item.status === 'missing' ? '❌' : '⚠️'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.scoreItemLabel}>
+                      {item.label}
+                      <Text style={styles.scoreItemPts}>  +{item.points - item.earned}</Text>
                     </Text>
-                  )}
+                    <Text style={styles.scoreItemHint}>{item.hint}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.scoreFixBtn}
+                    onPress={() => {
+                      // Send them to the thing that actually fixes it, rather than
+                      // describing the problem and leaving them to find it. An AI
+                      // tool wins over a screen; otherwise fix_in names the screen,
+                      // and the listing editor is the fallback.
+                      const tool = item.tool ? AI_TOOLS.find((t) => t.key === item.tool) : null;
+                      if (tool) openTool(tool);
+                      else navigate(FIX_ROUTES[item.fix_in] || 'google-business');
+                    }}
+                  >
+                    <Text style={styles.scoreFixText}>{FIX_LABEL[item.fix_in] || 'Fix'}</Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
-              <View style={[styles.scoreBadge, { backgroundColor: bandColor(gbp.score.band) }]}>
-                <Text style={styles.scoreBadgeText}>{gbp.score.band}</Text>
-              </View>
+              ))}
+
+              {/* Said plainly, because a score that falls on its own is a
+                  surprise worth warning about rather than explaining after. */}
+              <Text style={styles.scoreFootnote}>
+                This score measures what you are doing now, not what you filled in once.
+                Reviews, photos and posts all age, so it drifts down if you stop.
+              </Text>
             </View>
-
-            <View style={styles.scoreBarTrack}>
-              <View style={[styles.scoreBarFill, {
-                width: `${Math.max(2, Math.min(100, gbp.score.score))}%`,
-                backgroundColor: bandColor(gbp.score.band),
-              }]} />
-            </View>
-
-            {!!gbp.score.summary && <Text style={styles.scoreSummary}>{gbp.score.summary}</Text>}
-
-            {(gbp.score.items || []).filter((i) => i.status !== 'good').map((item) => (
-              <View key={item.key} style={styles.scoreItem}>
-                <Text style={styles.scoreItemIcon}>{item.status === 'missing' ? '❌' : '⚠️'}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.scoreItemLabel}>
-                    {item.label}
-                    <Text style={styles.scoreItemPts}>  +{item.points - item.earned}</Text>
-                  </Text>
-                  <Text style={styles.scoreItemHint}>{item.hint}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.scoreFixBtn}
-                  onPress={() => {
-                    // Send them to the thing that actually fixes it, rather than
-                    // describing the problem and leaving them to find it.
-                    const tool = item.tool ? AI_TOOLS.find((t) => t.key === item.tool) : null;
-                    if (tool) openTool(tool);
-                    else navigate('google-business');
-                  }}
-                >
-                  <Text style={styles.scoreFixText}>Fix</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
           </View>
         )}
 
@@ -417,39 +513,48 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border, padding: 14, marginBottom: 12,
   },
   reviewsIcon: { fontSize: 22, marginRight: 12 },
+  // gbpChevron is white, for the dark banner. These rows are white cards.
+  linkChevron: { fontSize: 26, color: COLORS.textMuted, marginLeft: 8 },
   reviewsTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
   reviewsSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, lineHeight: 16 },
   scoreCard: {
-    backgroundColor: COLORS.surface, borderRadius: 14, borderWidth: 1,
-    borderColor: COLORS.border, padding: 16, marginBottom: 16,
+    borderRadius: 16, marginBottom: 22, overflow: 'hidden',
+    borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface,
   },
-  scoreHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  scoreLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5 },
-  scoreRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 2 },
-  scoreValue: { fontSize: 34, fontWeight: '900' },
-  scoreOutOf: { fontSize: 14, color: COLORS.textMuted, marginLeft: 4 },
-  scoreDelta: { fontSize: 13, fontWeight: '800', marginLeft: 10 },
+  // Dark head so the dial reads as an instrument rather than another card.
+  gaugeWrap: { backgroundColor: COLORS.primary, paddingTop: 16, paddingBottom: 14 },
+  gaugeMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   scoreBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   scoreBadgeText: { fontSize: 11, fontWeight: '800', color: '#ffffff', textTransform: 'capitalize' },
-  scoreBarTrack: {
-    height: 8, borderRadius: 4, backgroundColor: COLORS.border,
-    overflow: 'hidden', marginTop: 12,
-  },
-  scoreBarFill: { height: 8, borderRadius: 4 },
-  scoreSummary: { fontSize: 13, color: COLORS.text, marginTop: 12, lineHeight: 19 },
+  scoreDelta: { fontSize: 13, fontWeight: '800' },
+  scoreSince: { fontSize: 11, fontWeight: '600', color: '#94a3b8' },
+
+  scoreBody: { padding: 14 },
+  scoreSummary: { fontSize: 13, color: COLORS.text, lineHeight: 19, marginBottom: 14 },
+
+  groupRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7 },
+  groupName: { width: 78, fontSize: 11.5, fontWeight: '700', color: COLORS.textMuted },
+  groupTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: COLORS.border, overflow: 'hidden' },
+  groupFill: { height: 6, borderRadius: 3 },
+  groupPts: { width: 38, fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textAlign: 'right' },
+
   scoreItem: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 12, marginTop: 12,
+    borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 11, marginTop: 11,
   },
   scoreItemIcon: { fontSize: 15, marginTop: 1 },
   scoreItemLabel: { fontSize: 13, fontWeight: '800', color: COLORS.text },
   scoreItemPts: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted },
   scoreItemHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, lineHeight: 17 },
   scoreFixBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 7, marginTop: 2,
+    backgroundColor: COLORS.primary, borderRadius: 7,
+    paddingHorizontal: 12, paddingVertical: 7, marginTop: 1,
   },
   scoreFixText: { fontSize: 12, fontWeight: '800', color: '#ffffff' },
+  scoreFootnote: {
+    fontSize: 11.5, color: COLORS.textMuted, lineHeight: 17, marginTop: 14,
+    borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 11,
+  },
   gbpIcon: { fontSize: 26, marginRight: 12 },
   gbpTitle: { fontSize: 15, fontWeight: '800', color: '#ffffff' },
   gbpSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2, lineHeight: 16 },

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator,
   Switch, Alert, StyleSheet, RefreshControl, Image,
@@ -32,6 +32,9 @@ export default function GoogleReviewsScreen() {
   const [suggesting, setSuggesting] = useState(false);
   const [posting, setPosting] = useState(false);
   const [savingAuto, setSavingAuto] = useState(false);
+  // Which tone each review has already been suggested, so pressing Suggest
+  // twice gives a different reply instead of repeating the first one.
+  const suggestState = useRef({});
 
   const load = useCallback(async () => {
     try {
@@ -57,26 +60,54 @@ export default function GoogleReviewsScreen() {
     setDraft(review.reply || '');
   };
 
-  /** Ask the AI tool for a reply to this specific review. */
+  /**
+   * Ask the AI for a reply to this specific review.
+   *
+   * Pressing Suggest again gives you a DIFFERENT reply rather than the same one
+   * back. The generator already returns four tones, so the first three presses
+   * walk through them at no extra cost; only once those are used up do we go
+   * back to the model, and then with regenerate so the cache is bypassed.
+   *
+   * Order is chosen by rating: warm first for praise, measured first for a
+   * complaint. A breezy "Thanks so much!" under a one-star review reads as not
+   * having read it.
+   */
   const suggest = async (review) => {
     setSuggesting(true);
     try {
-      // generate() takes the tool object and reads tool.endpoint off it, so the
-      // existing Review Replies tool is reused rather than a second code path
-      // to the same endpoint.
       const tool = getAiTool('review-reply');
       if (!tool) throw new Error('Review reply tool is unavailable.');
-      const res = await generateAi(tool, {
-        review: review.comment,
-        business_name: data?.location_title || '',
-      });
+
+      const order = review.stars >= 4
+        ? ['friendly', 'professional', 'short', 'formal']
+        : ['professional', 'formal', 'short', 'friendly'];
+
+      const seen = suggestState.current[review.id] || { round: 0, tone: 0 };
+      const exhausted = seen.tone >= order.length;
+
+      const res = await generateAi(
+        tool,
+        {
+          review: review.comment,
+          business_name: data?.location_title || '',
+          // Without these every short review produced the same reply, and two
+          // reviews with identical text were served the identical cached one.
+          reviewer: review.reviewer || '',
+          stars: review.stars || 0,
+        },
+        exhausted,           // regenerate only once the four tones are used up
+      );
+
       const r = res?.result || {};
-      // Match the register to the rating: warm for praise, measured for a
-      // complaint. A breezy "Thanks so much!" under a one-star review reads
-      // as not having read it.
-      const pick = review.stars >= 4
-        ? (r.friendly || r.professional || r.short)
-        : (r.professional || r.formal || r.short);
+      const idx = exhausted ? 0 : seen.tone;
+      // Fall back through the remaining tones if the model skipped a key.
+      const pick = order.slice(idx).map((k) => r[k]).find((v) => v && String(v).trim())
+        || order.map((k) => r[k]).find((v) => v && String(v).trim());
+
+      suggestState.current[review.id] = exhausted
+        ? { round: seen.round + 1, tone: 1 }
+        : { round: seen.round, tone: seen.tone + 1 };
+
       if (pick) setDraft(String(pick).trim());
       else Alert.alert('No suggestion', 'The AI did not return a reply. Try again.');
     } catch (e) {
@@ -175,6 +206,24 @@ export default function GoogleReviewsScreen() {
         </View>
       </View>
 
+      {/* Getting more reviews is the other half of managing them, so it sits
+          above the reply settings rather than buried at the bottom. */}
+      <TouchableOpacity
+        style={styles.askCard}
+        activeOpacity={0.85}
+        onPress={() => navigate('request-review')}
+      >
+        <Text style={styles.askIcon}>🙋</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.askTitle}>Request a review</Text>
+          <Text style={styles.askSub}>
+            Send your Google review link to a customer on WhatsApp or SMS, and keep track of
+            who you have already asked.
+          </Text>
+        </View>
+        <Text style={styles.askChevron}>›</Text>
+      </TouchableOpacity>
+
       {/* Auto-reply */}
       <View style={styles.autoCard}>
         <View style={styles.autoRow}>
@@ -220,8 +269,11 @@ export default function GoogleReviewsScreen() {
           <Text style={styles.errTitle}>No reviews yet</Text>
           <Text style={styles.errText}>
             Once customers review you on Google they will appear here, and you can reply
-            without leaving the app.
+            without leaving the app. The fastest way to get the first one is to ask.
           </Text>
+          <TouchableOpacity style={styles.errBtn} onPress={() => navigate('request-review')}>
+            <Text style={styles.errBtnText}>🙋 Request a review</Text>
+          </TouchableOpacity>
         </View>
       ) : reviews.map((r) => (
         <View key={r.id} style={styles.card}>
@@ -306,6 +358,16 @@ const styles = StyleSheet.create({
   },
   summaryValue: { fontSize: 20, fontWeight: '900', color: COLORS.text },
   summaryLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+
+  askCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: COLORS.surface, borderRadius: 12, borderWidth: 1.5,
+    borderColor: COLORS.primary, padding: 14, marginBottom: 12,
+  },
+  askIcon: { fontSize: 22 },
+  askTitle: { fontSize: 14, fontWeight: '800', color: COLORS.primary },
+  askSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, lineHeight: 17 },
+  askChevron: { fontSize: 24, color: COLORS.primary },
 
   autoCard: {
     backgroundColor: COLORS.surface, borderRadius: 12, borderWidth: 1,

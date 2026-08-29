@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  ActivityIndicator,
   Alert,
   Modal,
   Dimensions,
@@ -55,8 +54,8 @@ You agree not to use Tapify for any unlawful purpose or to publish content that:
 - Infringes on intellectual property rights.
 - Promotes harassment, spam, or malicious software.
 
-4. SUBSCRIPTIONS & PAYMENTS
-Certain features are billed on a subscription basis. Subscriptions automatically renew unless canceled before the billing date.
+4. PURCHASES
+Tapify smart cards, kits and related physical products are purchased from tapify.co.in or from a Tapify representative. Nothing is sold, billed or renewed inside this app, and no feature of this app requires a payment to use.
 
 5. LIMITATION OF LIABILITY
 Tapify is provided "as is" without warranties of any kind. In no event shall Tapify be liable for any indirect, incidental, or consequential damages.
@@ -70,35 +69,22 @@ export default function SettingsScreen() {
   const [pushNotifications, setPushNotifications] = useState(false);
   const [twoFactor, setTwoFactor] = useState(true);
   
-  const [planData, setPlanData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // NO PLAN / SUBSCRIPTION STATE HERE.
+  //
+  // This screen used to show a "Tapify Plan" card reading "Tapify SaaS
+  // Membership" with a next-billing date, fetched from /api/me.php. Nothing in
+  // the app has ever been sold, billed or gated — the card was purely
+  // decorative — but App Review read it as advertising an auto-renewing
+  // subscription with no In-App Purchase behind it, and it triggered a
+  // Guideline 2.1(b) information request.
+  //
+  // Cards and kits are physical products bought at tapify.co.in or from a
+  // representative, so there is no plan to display and nothing here should
+  // imply one. Do not reintroduce this card: if plan status ever genuinely
+  // needs showing, it has to come with a real purchase path through IAP.
 
   const [policyModalVisible, setPolicyModalVisible] = useState(false);
   const [policyType, setPolicyType] = useState('privacy'); // 'privacy' or 'terms'
-
-  useEffect(() => {
-    loadPlan();
-  }, []);
-
-  const loadPlan = async () => {
-    try {
-      setLoading(true);
-      const response = await fetchApi('/api/me.php');
-      if (response.success && response.data?.user) {
-        setPlanData(response.data.user);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load plan details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
 
   const openPolicy = (type) => {
     setPolicyType(type);
@@ -183,32 +169,6 @@ export default function SettingsScreen() {
             />
           </View>
         </GlassCard>
-
-        <Text style={styles.sectionTitle}>Tapify Plan</Text>
-
-        {loading ? (
-          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
-        ) : (
-          <GlassCard style={[styles.card, styles.planCard]}>
-            <View style={styles.planHeader}>
-              <Text style={styles.planBadge}>{planData?.plan_name ? planData.plan_name.toUpperCase() : 'FREE PLAN'}</Text>
-              <Text style={styles.planPrice}>{planData?.plan_name ? 'Active' : 'N/A'}</Text>
-            </View>
-            <Text style={styles.planTitle}>Tapify SaaS Membership</Text>
-            <Text style={styles.planRenewal}>
-              {planData?.subscription_expires ? `Next billing date: ${formatDate(planData.subscription_expires)}` : 'No active subscription'}
-            </Text>
-            
-            {/* No "Manage Subscription" button.
-                It had no onPress at all, so it was a dead control — a Guideline
-                2.1 bug on its own. Giving it a destination would be worse: any
-                route to buying or renewing outside the app is exactly what
-                Guideline 3.1.1 forbids, and 3.1.1 is what this app was just
-                rejected under. Plans are provisioned by the Tapify team, so the
-                card stays informational: it reports status and offers no way to
-                transact. */}
-          </GlassCard>
-        )}
 
         <Text style={styles.sectionTitle}>Legal & Policies</Text>
 
@@ -340,52 +300,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(21, 62, 63, 0.08)',
     marginVertical: 12,
   },
-  planCard: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primaryLight,
-  },
-  planHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  planBadge: {
-    backgroundColor: COLORS.accent,
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: '800',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  planPrice: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  planTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  planRenewal: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
-    marginTop: 6,
-    marginBottom: 20,
-  },
-  manageBtn: {
-    backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  manageBtnText: {
-    color: COLORS.primary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  // planCard / planHeader / planBadge / planPrice / planTitle / planRenewal
+  // and manageBtn were removed with the "Tapify Plan" card — see the note at
+  // the top of the component.
 
   // Policy List Items
   policyRow: {

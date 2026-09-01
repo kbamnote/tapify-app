@@ -15,6 +15,7 @@ import {
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import { PAID_ADS_ENABLED } from './src/config/paidAds';
 import AppointmentsScreen from './src/screens/AppointmentsScreen';
 import InquiriesScreen from './src/screens/InquiriesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -109,12 +110,16 @@ function ScreenRenderer() {
       return <BusinessServicesScreen />;
     case 'social':
       return <SocialScreen />;
+    // Paid-ads routes are absent on iOS, not merely hidden from the menu. A
+    // reviewer reached the Razorpay top-up through Boost Ads once already
+    // (Guideline 3.1.1), so the screens must not render even if something
+    // navigates to them directly. See src/config/paidAds.js.
     case 'wallet':
-      return <WalletScreen />;
+      return PAID_ADS_ENABLED ? <WalletScreen /> : <DashboardScreen />;
     case 'boost-ads':
-      return <BoostAdsScreen />;
+      return PAID_ADS_ENABLED ? <BoostAdsScreen /> : <DashboardScreen />;
     case 'ad-insights':
-      return <AdInsightsScreen />;
+      return PAID_ADS_ENABLED ? <AdInsightsScreen /> : <DashboardScreen />;
     case 'reviews-funnel':
       return <ReviewsScreen />;
     case 'notifications':

@@ -10,6 +10,7 @@ import {
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import { fetchApi } from '../config';
+import { PAID_ADS_ENABLED } from '../config/paidAds';
 
 // Wallet top-ups need the react-native-razorpay SDK, which is not installed yet
 // (see WalletScreen's own note). Until it is, the screen can show a balance but
@@ -22,8 +23,12 @@ const NAV_ITEMS = [
   { id: 'ai-growth',        label: 'AI Growth Center', icon: '🤖' },
   { id: 'whatsapp',         label: 'WhatsApp',         icon: '💬' },
   { id: 'social',           label: 'Social Media',     icon: '📣' },
-  { id: 'boost-ads',        label: 'Boost Ads',        icon: '📈' },
-  ...(PAYMENTS_ENABLED ? [{ id: 'wallet', label: 'Wallet', icon: '💰' }] : []),
+  // Boost Ads is hidden on iOS along with the wallet: its balance strip
+  // navigates to the Wallet, which is how App Review reached the Razorpay
+  // top-up and rejected under Guideline 3.1.1. Hiding only `wallet` was not
+  // enough — see src/config/paidAds.js.
+  ...(PAID_ADS_ENABLED ? [{ id: 'boost-ads', label: 'Boost Ads', icon: '📈' }] : []),
+  ...(PAID_ADS_ENABLED && PAYMENTS_ENABLED ? [{ id: 'wallet', label: 'Wallet', icon: '💰' }] : []),
   { id: 'businesses',       label: 'Businesses',       icon: '🏢' },
   { id: 'website-orders',   label: 'Orders',           icon: '🛒' },
   { id: 'website-inquiries', label: 'Inquiries',       icon: '📨' },

@@ -22,7 +22,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.kbamnote.tapifapp",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "supportsTablet": false,
       "icon": "./assets/ios-icon.png",
       "config": {

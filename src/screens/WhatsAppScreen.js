@@ -6,6 +6,7 @@ import {
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { API_BASE } from '../config';
+import { useNavigation } from '../context/NavigationContext';
 
 /**
  * WhatsApp — the business's own number.
@@ -55,6 +56,7 @@ const fmtTime = (v) => {
 const TICKS = { read: '✓✓', delivered: '✓✓', sent: '✓', queued: '🕓', failed: '⚠' };
 
 export default function WhatsAppScreen() {
+  const { navigate } = useNavigation();
   const [loading, setLoading]   = useState(true);
   const [status, setStatus]     = useState(null);
   const [error, setError]       = useState(null);
@@ -68,6 +70,13 @@ export default function WhatsAppScreen() {
   const [windowOpen, setWindowOpen] = useState(false);
   const [reply, setReply]       = useState('');
   const [sending, setSending]   = useState(false);
+
+  // Approved templates, for when the 24-hour window has closed. WhatsApp will
+  // not deliver free text then, so without these the thread is a dead end and
+  // the only way to answer a customer is to find a laptop.
+  const [templates, setTemplates] = useState(null);   // null = not loaded yet
+  const [tplName, setTplName]     = useState('');
+  const [tplParams, setTplParams] = useState([]);     // one string per {{n}}
 
   const pollRef = useRef(null);
 
@@ -106,22 +115,72 @@ export default function WhatsAppScreen() {
     return () => clearInterval(pollRef.current);
   }, [status, active, loadConvos]);
 
+  /** Approved templates for this number. Fetched once, then reused. */
+  const loadTemplates = useCallback(async () => {
+    try {
+      const list = await waApi('templates');
+      setTemplates(Array.isArray(list) ? list : []);
+    } catch (e) {
+      // Not fatal — the thread still works, the picker just says so.
+      console.log('[WA] templates failed:', e.message);
+      setTemplates([]);
+    }
+  }, []);
+
   const openThread = async (c) => {
     setActive(c);
     setThreadBusy(true);
     setReply('');
+    setTplName('');
+    setTplParams([]);
     try {
       const list = await waApi('thread', { qs: `&phone=${encodeURIComponent(c.phone)}` });
       setMsgs(list);
       // Free text only delivers within 24h of their last inbound message —
       // work it out before showing a box that would silently fail.
       const lastIn = [...list].reverse().find((m) => m.direction === 'in');
-      setWindowOpen(!!lastIn && Date.now() - new Date(lastIn.createdAt).getTime() < 24 * 3600 * 1000);
+      const open = !!lastIn && Date.now() - new Date(lastIn.createdAt).getTime() < 24 * 3600 * 1000;
+      setWindowOpen(open);
+      // Only pay for the Graph call when a template is the only way to reply.
+      if (!open && templates === null) loadTemplates();
     } catch (e) {
       Alert.alert('Could not open', e.message);
       setActive(null);
     } finally {
       setThreadBusy(false);
+    }
+  };
+
+  /** Selecting a template resizes the parameter list to match its {{n}} count. */
+  const pickTemplate = (t) => {
+    setTplName(t.name === tplName ? '' : t.name);
+    setTplParams(t.name === tplName ? [] : new Array(t.paramCount || 0).fill(''));
+  };
+
+  const sendTemplate = async () => {
+    if (!tplName || sending) return;
+    const chosen = (templates || []).find((t) => t.name === tplName);
+    const need = chosen?.paramCount || 0;
+    // Meta rejects the send outright if a placeholder is left empty, with an
+    // error the customer cannot act on. Catch it here instead.
+    if (tplParams.slice(0, need).some((p) => !String(p || '').trim())) {
+      Alert.alert('Fill every field', 'This template has blanks that must be filled before it can be sent.');
+      return;
+    }
+    setSending(true);
+    try {
+      await waApi('send', {
+        method: 'POST',
+        body: { phone: active.phone, templateName: tplName, params: tplParams.slice(0, need) },
+      });
+      setTplName('');
+      setTplParams([]);
+      await openThread(active);
+      loadConvos();
+    } catch (e) {
+      Alert.alert('Could not send', e.message);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -249,8 +308,67 @@ export default function WhatsAppScreen() {
             <Text style={styles.closedTitle}>24-hour window closed</Text>
             <Text style={styles.closedText}>
               This contact has not messaged you in the last 24 hours, so WhatsApp will not deliver a
-              typed reply. Send an approved template from the dashboard instead.
+              typed reply. Send one of your approved templates instead.
             </Text>
+
+            {templates === null ? (
+              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 14 }} />
+            ) : templates.length === 0 ? (
+              <Text style={styles.closedHint}>
+                No approved templates on this number yet. Templates are created and approved in
+                WhatsApp Manager, and usually clear within a day.
+              </Text>
+            ) : (
+              <>
+                <Text style={styles.tplLabel}>Choose a template</Text>
+                {templates.map((t) => {
+                  const on = t.name === tplName;
+                  return (
+                    <TouchableOpacity
+                      key={t.name}
+                      style={[styles.tplRow, on && styles.tplRowOn]}
+                      onPress={() => pickTemplate(t)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                    >
+                      <Text style={[styles.tplName, on && styles.tplNameOn]}>{t.name}</Text>
+                      {!!t.body && (
+                        <Text style={[styles.tplBody, on && styles.tplBodyOn]} numberOfLines={3}>
+                          {t.body}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* One input per {{n}}, in order. The preview above shows where
+                    each one lands, so the numbering is not a guessing game. */}
+                {tplParams.map((v, i) => (
+                  <TextInput
+                    key={i}
+                    style={styles.tplInput}
+                    value={v}
+                    onChangeText={(txt) => {
+                      const next = [...tplParams];
+                      next[i] = txt;
+                      setTplParams(next);
+                    }}
+                    placeholder={`Value for {{${i + 1}}}`}
+                    placeholderTextColor="#9aa5a1"
+                  />
+                ))}
+
+                <TouchableOpacity
+                  style={[styles.tplSend, (!tplName || sending) && styles.tplSendOff]}
+                  onPress={sendTemplate}
+                  disabled={!tplName || sending}
+                >
+                  <Text style={styles.tplSendText}>
+                    {sending ? 'Sending…' : 'Send template'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         )}
       </KeyboardAvoidingView>
@@ -264,6 +382,20 @@ export default function WhatsAppScreen() {
         <View style={styles.dot} />
         <Text style={styles.statusNum}>{status.displayPhone || 'Connected'}</Text>
         <Text style={styles.statusBiz} numberOfLines={1}>{status.name || ''}</Text>
+        <TouchableOpacity
+          style={styles.autoBtn}
+          onPress={() => navigate('whatsapp-broadcast')}
+          hitSlop={6}
+        >
+          <Text style={styles.autoBtnText}>Broadcast</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.autoBtn, { marginLeft: 6 }]}
+          onPress={() => navigate('whatsapp-auto-replies')}
+          hitSlop={6}
+        >
+          <Text style={styles.autoBtnText}>Auto-replies</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -319,6 +451,9 @@ const styles = StyleSheet.create({
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#16a34a' },
   statusNum: { fontSize: 14, fontWeight: '800', color: COLORS.text },
   statusBiz: { fontSize: 12.5, color: COLORS.textMuted, flex: 1 },
+  autoBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 7,
+             backgroundColor: 'rgba(21,62,63,0.07)' },
+  autoBtnText: { fontSize: 11.5, fontWeight: '700', color: COLORS.primary },
 
   convo: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, marginBottom: 10 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(37,211,102,0.14)',
@@ -356,6 +491,26 @@ const styles = StyleSheet.create({
   closedBox: { margin: 12, padding: 13, borderRadius: 12, backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a' },
   closedTitle: { fontSize: 13.5, fontWeight: '800', color: '#92400e', marginBottom: 4 },
   closedText: { fontSize: 12.5, color: '#92400e', lineHeight: 18 },
+
+  // Template picker, shown inside the amber closed-window box. Colours stay in
+  // that family so it reads as one panel rather than a second UI bolted on.
+  closedHint: { fontSize: 12.5, color: '#92400e', lineHeight: 18, marginTop: 10, fontStyle: 'italic' },
+  tplLabel: { fontSize: 11.5, fontWeight: '800', color: '#92400e', letterSpacing: 0.6,
+              textTransform: 'uppercase', marginTop: 14, marginBottom: 7 },
+  tplRow: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a',
+            borderRadius: 9, paddingVertical: 9, paddingHorizontal: 11, marginBottom: 7 },
+  tplRowOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  tplName: { fontSize: 13, fontWeight: '700', color: '#92400e' },
+  tplNameOn: { color: '#ffffff' },
+  tplBody: { fontSize: 11.5, color: '#a16207', marginTop: 3, lineHeight: 16 },
+  tplBodyOn: { color: 'rgba(255,255,255,0.85)' },
+  tplInput: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#fde68a', borderRadius: 9,
+              paddingHorizontal: 11, paddingVertical: 9, fontSize: 13.5, color: '#1f2937',
+              marginBottom: 7 },
+  tplSend: { backgroundColor: COLORS.primary, borderRadius: 9, paddingVertical: 12,
+             alignItems: 'center', marginTop: 4 },
+  tplSendOff: { opacity: 0.45 },
+  tplSendText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
 
   emptyIcon: { fontSize: 40, marginBottom: 10 },
   emptyText: { color: COLORS.textMuted, fontSize: 14, textAlign: 'center' },

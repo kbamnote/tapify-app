@@ -52,6 +52,8 @@ import WebsiteAppointmentsScreen from './src/screens/WebsiteAppointmentsScreen';
 import WebsiteInquiriesScreen from './src/screens/WebsiteInquiriesScreen';
 import WebsiteFeedbackScreen from './src/screens/WebsiteFeedbackScreen';
 import WhatsAppScreen from './src/screens/WhatsAppScreen';
+import WhatsAppAutoRepliesScreen from './src/screens/WhatsAppAutoRepliesScreen';
+import WhatsAppBroadcastScreen from './src/screens/WhatsAppBroadcastScreen';
 import WebsiteBuilderScreen from './src/screens/WebsiteBuilderScreen';
 import SiteEditorScreen from './src/screens/SiteEditorScreen';
 
@@ -148,6 +150,10 @@ function ScreenRenderer() {
       return <WebsiteFeedbackScreen />;
     case 'whatsapp':
       return <WhatsAppScreen />;
+    case 'whatsapp-auto-replies':
+      return <WhatsAppAutoRepliesScreen />;
+    case 'whatsapp-broadcast':
+      return <WhatsAppBroadcastScreen />;
     case 'website-builder':
       return <WebsiteBuilderScreen />;
     case 'site-editor':
@@ -221,6 +227,8 @@ function MainLayout() {
       case 'website-inquiries':    return '📨 Website Inquiries';
       case 'website-feedback':     return '⭐ Website Feedback';
       case 'whatsapp':             return '💬 WhatsApp';
+      case 'whatsapp-auto-replies': return '🤖 Auto-replies';
+      case 'whatsapp-broadcast':   return '📢 Broadcast';
       case 'website-builder':      return '🌐 Website Builder';
       case 'site-editor':          return params?.name ? `✎ ${params.name}` : 'Edit Website';
       default: return 'Tapify';

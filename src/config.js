@@ -1,10 +1,18 @@
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
 export const API_BASE = 'https://app.tapify.co.in';
+
+// Tells the backend a request came from the app (and which platform/version),
+// so customer activity is recorded as app use rather than website use.
+export const CLIENT_HEADER = `app;${Platform.OS};${Constants.expoConfig?.version ?? ''}`;
 
 export const fetchApi = async (endpoint, options = {}) => {
   const url = `${API_BASE}${endpoint}`;
-  
+
   const defaultHeaders = {
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'X-Tapify-Client': CLIENT_HEADER,
   };
 
   if (!(options.body instanceof FormData)) {

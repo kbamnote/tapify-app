@@ -4,6 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi, API_BASE } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 import * as ImagePicker from 'expo-image-picker';
 import QRCode from 'react-native-qrcode-svg';
 import ViewShot from 'react-native-view-shot';
@@ -401,6 +402,7 @@ export default function VcardsEditScreen() {
       if (qrViewRef.current) {
         const uri = await qrViewRef.current.capture();
         await MediaLibrary.saveToLibraryAsync(uri);
+        ActivityTracker.action('digital_card', 'download_qr');
         Alert.alert('Success', 'QR Code saved to gallery!');
       }
     } catch (e) {

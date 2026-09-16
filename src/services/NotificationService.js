@@ -4,6 +4,18 @@ import * as Notifications from 'expo-notifications';
 import { Platform, Alert, Linking } from 'react-native';
 import { fetchApi } from '../config';
 
+/**
+ * redirect_url "screen:<name>" opens that screen — sent by Tapify's account
+ * managers to take a customer straight to a feature ("Try the new designs").
+ * Admin screens and login are never reachable this way.
+ */
+export function screenFromRedirect(url) {
+  if (typeof url !== 'string' || !url.startsWith('screen:')) return null;
+  const screen = url.slice('screen:'.length);
+  if (!/^[a-z][a-z-]*$/.test(screen) || screen.startsWith('admin') || screen === 'login') return null;
+  return screen;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Android notification channels
 // Must be created BEFORE requesting permissions so the channel exists
@@ -150,7 +162,9 @@ export function setupNotificationListeners(onNavigate) {
     if (!data?.redirect_url || !onNavigate) return;
 
     const url = data.redirect_url;
-    if (url.includes('appointment'))  onNavigate('appointments');
+    const screen = screenFromRedirect(url);
+    if (screen)                       onNavigate(screen);
+    else if (url.includes('appointment'))  onNavigate('appointments');
     else if (url.includes('inquiry')) onNavigate('inquiries');
     else if (url.includes('review'))  onNavigate('reviews-funnel');
     else if (url.includes('order'))   onNavigate('whatsapp-orders');
@@ -175,7 +189,9 @@ export async function handleLaunchNotification(onNavigate) {
   if (!data?.redirect_url || !onNavigate) return;
 
   const url = data.redirect_url;
-  if (url.includes('appointment'))  onNavigate('appointments');
+  const screen = screenFromRedirect(url);
+  if (screen)                       onNavigate(screen);
+  else if (url.includes('appointment'))  onNavigate('appointments');
   else if (url.includes('inquiry')) onNavigate('inquiries');
   else if (url.includes('review'))  onNavigate('reviews-funnel');
   else if (url.includes('order'))   onNavigate('whatsapp-orders');

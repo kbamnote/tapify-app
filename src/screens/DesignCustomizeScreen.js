@@ -17,6 +17,7 @@ import {
   Alert
 } from 'react-native';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import * as ImagePicker from 'expo-image-picker';
@@ -264,6 +265,7 @@ export default function DesignCustomizeScreen() {
       await new Promise(r => setTimeout(r, 100)); // allow state to clear selection UI
       const uri = await viewRef.current.capture();
       await MediaLibrary.saveToLibraryAsync(uri);
+      ActivityTracker.action('designs', 'download');
       alert('Success! Design saved to your gallery.');
     } catch (e) {
       alert('Error saving: ' + e.message);

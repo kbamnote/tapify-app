@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 const dayNames = {1: 'MON', 2: 'TUE', 3: 'WED', 4: 'THU', 5: 'FRI', 6: 'SAT', 0: 'SUN'};
 const order = [1, 2, 3, 4, 5, 6, 0];
@@ -257,7 +258,10 @@ export default function AppointmentsScreen() {
               {!!item.customer_phone && (
                 <TouchableOpacity
                   style={styles.callBtn}
-                  onPress={() => Linking.openURL(`tel:${item.customer_phone}`)}
+                  onPress={() => {
+                    ActivityTracker.action('appointments', 'call_customer');
+                    Linking.openURL(`tel:${item.customer_phone}`);
+                  }}
                 >
                   <Text style={styles.callBtnText}>📞 Call Customer</Text>
                 </TouchableOpacity>

@@ -6,6 +6,7 @@ import {
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 /**
  * Website Feedback — feedback submitted from the user's builder-site Feedback
@@ -69,8 +70,16 @@ export default function WebsiteFeedbackScreen() {
     ]);
   };
 
-  const call = (p) => p && Linking.openURL(`tel:${p}`);
-  const whatsapp = (p) => p && Linking.openURL(`https://wa.me/${String(p).replace(/\D/g, '')}`);
+  const call = (p) => {
+    if (!p) return;
+    ActivityTracker.action('website_feedback', 'call_customer');
+    Linking.openURL(`tel:${p}`);
+  };
+  const whatsapp = (p) => {
+    if (!p) return;
+    ActivityTracker.action('website_feedback', 'whatsapp_customer');
+    Linking.openURL(`https://wa.me/${String(p).replace(/\D/g, '')}`);
+  };
 
   const shown = filter === 'unread' ? rows.filter((r) => !r.is_read) : rows;
 

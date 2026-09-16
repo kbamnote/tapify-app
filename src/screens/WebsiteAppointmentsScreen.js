@@ -6,6 +6,7 @@ import {
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 /**
  * Website Appointments — appointments booked on the user's builder sites.
@@ -81,8 +82,16 @@ export default function WebsiteAppointmentsScreen() {
     }
   };
 
-  const call = (p) => p && Linking.openURL(`tel:${p}`);
-  const whatsapp = (p) => p && Linking.openURL(`https://wa.me/${String(p).replace(/\D/g, '')}`);
+  const call = (p) => {
+    if (!p) return;
+    ActivityTracker.action('website_appointments', 'call_customer');
+    Linking.openURL(`tel:${p}`);
+  };
+  const whatsapp = (p) => {
+    if (!p) return;
+    ActivityTracker.action('website_appointments', 'whatsapp_customer');
+    Linking.openURL(`https://wa.me/${String(p).replace(/\D/g, '')}`);
+  };
 
   // ---- reschedule ----
   const [reschedFor, setReschedFor] = useState(null);   // the appointment being moved

@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, Activity
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 export default function WhatsappOrdersScreen() {
   const [orders, setOrders] = useState([]);
@@ -47,6 +48,7 @@ export default function WhatsappOrdersScreen() {
 
   const handleContact = (phone) => {
     if (phone) {
+      ActivityTracker.action('whatsapp_orders', 'whatsapp_customer');
       Linking.openURL(`https://wa.me/${phone.replace(/\D/g, '')}`);
     }
   };
@@ -139,7 +141,10 @@ export default function WhatsappOrdersScreen() {
                   <Text style={styles.actionBtnText}>💬 WhatsApp</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primary }]} onPress={() => {
-                  if (order.customer_phone) Linking.openURL(`tel:${order.customer_phone.replace(/\D/g, '')}`);
+                  if (order.customer_phone) {
+                    ActivityTracker.action('whatsapp_orders', 'call_customer');
+                    Linking.openURL(`tel:${order.customer_phone.replace(/\D/g, '')}`);
+                  }
                 }}>
                   <Text style={styles.actionBtnText}>📞 Call</Text>
                 </TouchableOpacity>

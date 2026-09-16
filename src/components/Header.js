@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '../context/NavigationContext';
 import { COLORS } from '../theme/colors';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 const CustomQrIcon = () => (
   <View style={qrStyles.container}>
@@ -152,10 +153,11 @@ export default function Header({ title }) {
   const handleShare = async () => {
     if (!liveUrl) return;
     try {
-      await Share.share({
+      const result = await Share.share({
         message: `My Tapify vCard: ${liveUrl}`,
         url: liveUrl,
       });
+      if (result?.action !== Share.dismissedAction) ActivityTracker.action('digital_card', 'share_card');
     } catch (error) {
       Alert.alert('Error', error.message);
     }

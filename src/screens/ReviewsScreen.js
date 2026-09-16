@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 import { COLORS } from '../theme/colors';
 import { useNavigation } from '../context/NavigationContext';
 
@@ -312,7 +313,10 @@ export default function ReviewsScreen() {
                 <View style={styles.reviewInfoItem}>
                   <Text style={styles.reviewInfoLabel}>📞 Phone</Text>
                   {r.customer_phone ? (
-                    <TouchableOpacity onPress={() => Linking.openURL(`tel:${r.customer_phone}`)}>
+                    <TouchableOpacity onPress={() => {
+                      ActivityTracker.action('review_requests', 'call_customer');
+                      Linking.openURL(`tel:${r.customer_phone}`);
+                    }}>
                       <Text style={styles.phoneLink}>{r.customer_phone}</Text>
                     </TouchableOpacity>
                   ) : (

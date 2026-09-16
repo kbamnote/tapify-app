@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, Activity
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 export default function InquiriesScreen() {
   const [inquiries, setInquiries] = useState([]);
@@ -46,6 +47,7 @@ export default function InquiriesScreen() {
   const handleCall = (id, phone) => {
     if (!phone) return Alert.alert('No phone', 'This inquiry has no phone number.');
     markAsRead(id);
+    ActivityTracker.action('inquiries', 'call_lead');
     Linking.openURL(`tel:${phone}`);
   };
 
@@ -54,6 +56,7 @@ export default function InquiriesScreen() {
     markAsRead(id);
     // Strip non-numeric characters for WhatsApp URL
     const cleaned = phone.replace(/\D/g, '');
+    ActivityTracker.action('inquiries', 'whatsapp_lead');
     Linking.openURL(`whatsapp://send?phone=${cleaned}&text=Hi%2C%20regarding%20your%20Tapify%20inquiry`);
   };
 

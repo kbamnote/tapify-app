@@ -7,6 +7,7 @@ import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -123,12 +124,14 @@ export default function BusinessesScreen() {
 
   const handleWhatsApp = (phone) => {
     if (!phone) { Alert.alert('No Number', 'This business has not added a phone number.'); return; }
+    ActivityTracker.action('business_directory', 'whatsapp_business');
     Linking.openURL(`https://wa.me/${phone.replace(/\D/g, '')}`)
       .catch(() => Alert.alert('Error', 'Could not open WhatsApp'));
   };
 
   const handleCall = (phone) => {
     if (!phone) { Alert.alert('No Number', 'This business has not added a phone number.'); return; }
+    ActivityTracker.action('business_directory', 'call_business');
     Linking.openURL(`tel:${phone}`)
       .catch(() => Alert.alert('Error', 'Could not initiate call'));
   };

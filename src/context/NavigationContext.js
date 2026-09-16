@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useRef } from 'r
 import { BackHandler, ToastAndroid, Platform } from 'react-native';
 
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 const NavigationContext = createContext(null);
 
@@ -20,6 +21,8 @@ export function NavigationProvider({ children }) {
         if (response.success && response.data && response.data.user) {
           setUser(response.data.user);
           setCurrentScreen('dashboard');
+          ActivityTracker.start(response.data.user.id);
+          ActivityTracker.screen('dashboard');
         }
       } catch (err) {
         // Not logged in or session expired
@@ -37,13 +40,14 @@ export function NavigationProvider({ children }) {
 
       // After login, fetch full user profile (includes titanium, subscription, vcard)
       const meResponse = await fetchApi('/api/me.php');
-      if (meResponse.success && meResponse.data?.user) {
-        setUser(meResponse.data.user);
-      } else {
-        setUser(response.data?.user || response.user);
-      }
+      const loggedIn = (meResponse.success && meResponse.data?.user)
+        ? meResponse.data.user
+        : (response.data?.user || response.user);
+      setUser(loggedIn);
 
       setCurrentScreen('dashboard');
+      ActivityTracker.start(loggedIn?.id);
+      ActivityTracker.screen('dashboard');
       return { success: true };
     } catch (error) {
       return { success: false, message: error.message };
@@ -61,6 +65,7 @@ export function NavigationProvider({ children }) {
   };
 
   const logout = () => {
+    ActivityTracker.stop();
     historyStack.current = [];
     setUser(null);
     setCurrentScreen('login');
@@ -68,6 +73,10 @@ export function NavigationProvider({ children }) {
   };
 
   const navigate = (screen, screenParams = null) => {
+    // Every forward navigation in the app comes through here — including taps
+    // on notifications — so this one call records every screen opened. Going
+    // back isn't counted: returning to a screen isn't opening a feature.
+    ActivityTracker.screen(screen);
     setCurrentScreen(prev => {
       // Don't push duplicates or login onto the history stack
       if (prev !== screen && prev !== 'login') {

@@ -6,6 +6,7 @@ import {
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 
 /**
  * Website Orders — orders placed on the user's website-builder sites.
@@ -87,8 +88,16 @@ export default function WebsiteOrdersScreen() {
     }
   };
 
-  const call = (p) => p && Linking.openURL(`tel:${p}`);
-  const whatsapp = (p) => p && Linking.openURL(`https://wa.me/${String(p).replace(/\D/g, '')}`);
+  const call = (p) => {
+    if (!p) return;
+    ActivityTracker.action('website_orders', 'call_customer');
+    Linking.openURL(`tel:${p}`);
+  };
+  const whatsapp = (p) => {
+    if (!p) return;
+    ActivityTracker.action('website_orders', 'whatsapp_customer');
+    Linking.openURL(`https://wa.me/${String(p).replace(/\D/g, '')}`);
+  };
 
   const shown = filter ? orders.filter((o) => o.status === filter) : orders;
 

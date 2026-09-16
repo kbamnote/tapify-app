@@ -4,6 +4,7 @@ import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
 import { useNavigation } from '../context/NavigationContext';
+import { screenFromRedirect } from '../services/NotificationService';
 
 export default function NotificationsScreen() {
   const { navigate } = useNavigation();
@@ -42,7 +43,9 @@ export default function NotificationsScreen() {
     }
 
     if (noti.redirect_url) {
-      if (noti.redirect_url.includes('appointment')) navigate('appointments');
+      const screen = screenFromRedirect(noti.redirect_url);
+      if (screen) navigate(screen);
+      else if (noti.redirect_url.includes('appointment')) navigate('appointments');
       else if (noti.redirect_url.includes('lead')) navigate('inquiries');
       else if (noti.redirect_url.includes('review')) navigate('reviews-funnel');
       else if (noti.redirect_url.includes('dashboard')) navigate('dashboard');

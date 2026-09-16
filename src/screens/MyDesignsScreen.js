@@ -16,6 +16,7 @@ import {
 import { COLORS } from '../theme/colors';
 import GlassCard from '../components/GlassCard';
 import { fetchApi } from '../config';
+import ActivityTracker from '../services/ActivityTracker';
 import { useNavigation } from '../context/NavigationContext';
 import { API_BASE } from '../config';
 
@@ -216,9 +217,10 @@ export default function MyDesignsScreen() {
 
   const handleShare = async (design) => {
     try {
-      await Share.share({
+      const result = await Share.share({
         message: `Check out this design on Tapify: ${design.title}\n${design.description}\nPreview: ${design.image_url}`,
       });
+      if (result?.action !== Share.dismissedAction) ActivityTracker.action('designs', 'share');
     } catch (error) {
       Alert.alert('Error', error.message);
     }
@@ -419,7 +421,9 @@ export default function MyDesignsScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, alignItems: 'center' }}>
               <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{new Date(item.created_at).toLocaleDateString()}</Text>
               <TouchableOpacity style={styles.catContentActionBtn} onPress={() => {
-                  Share.share({ message: item.text_content || 'Check out this post from Tapify!', url: item.image_url ? (item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}`) : undefined });
+                  Share.share({ message: item.text_content || 'Check out this post from Tapify!', url: item.image_url ? (item.image_url.startsWith('http') ? item.image_url : `${API_BASE}${item.image_url}`) : undefined })
+                    .then((result) => { if (result?.action !== Share.dismissedAction) ActivityTracker.action('designs', 'share_post'); })
+                    .catch(() => {});
               }}>
                 <Text style={styles.catContentActionText}>📤 Share</Text>
               </TouchableOpacity>

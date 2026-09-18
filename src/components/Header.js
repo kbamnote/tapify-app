@@ -148,7 +148,9 @@ export default function Header({ title }) {
   }, [user]);
 
   const liveUrl = vcard ? `https://app.tapify.co.in/${vcard.url_alias}` : '';
-  const qrCodeUrl = liveUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(liveUrl)}` : '';
+  // ?s=qr so a scan of this code is counted as a scan, not as someone opening
+  // the link directly (the share link below stays untagged on purpose).
+  const qrCodeUrl = liveUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${liveUrl}?s=qr`)}` : '';
 
   const handleShare = async () => {
     if (!liveUrl) return;

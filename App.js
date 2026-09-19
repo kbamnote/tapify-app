@@ -3,6 +3,10 @@ import { StyleSheet, View, Image, Animated, useWindowDimensions } from 'react-na
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+// Imported for its side effect, and before any screen: it wraps
+// React.createElement so every button press is recorded for the customer's
+// account manager. Must be the first app import so no screen is built first.
+import './src/services/autotrack';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 import { COLORS } from './src/theme/colors';
 import {

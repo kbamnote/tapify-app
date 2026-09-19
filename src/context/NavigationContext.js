@@ -91,6 +91,10 @@ export function NavigationProvider({ children }) {
   const goBack = () => {
     if (historyStack.current.length > 0) {
       const previous = historyStack.current.pop();
+      // Not an "open" — going back isn't discovering a feature — but it is
+      // something the customer did, and it tells the tracker which screen the
+      // taps that follow belong to.
+      ActivityTracker.back(previous.screen);
       setCurrentScreen(previous.screen);
       setParams(previous.params);
       setSidebarOpen(false);

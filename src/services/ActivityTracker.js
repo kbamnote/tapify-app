@@ -30,6 +30,7 @@ const FLUSH_EVERY_MS = 30000;
 const FLUSH_AT = 20;            // send early once this many are waiting
 const NEW_OPEN_AFTER_MS = 5 * 60 * 1000; // back after this long = a new app open
 const SAME_SCREEN_MS = 2000;    // ignore a repeat of the same screen within this
+const SAME_TAP_MS = 700;        // one tap can fire two handlers; count it once
 
 const USER_KEY = `${QUEUE_KEY}_user`;
 
@@ -40,6 +41,8 @@ let timer = null;
 let appStateSub = null;
 let backgroundedAt = null;
 let lastScreen = { name: null, at: 0 };
+let currentScreen = null;       // where the customer is right now, stamped on taps
+let lastTap = { key: null, at: 0 };
 
 const newId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -186,6 +189,8 @@ export async function stop() {
   } catch (_) { /* ignore */ }
   userId = null;
   lastScreen = { name: null, at: 0 };
+  lastTap = { key: null, at: 0 };
+  currentScreen = null;
   if (timer) { clearInterval(timer); timer = null; }
   if (appStateSub) { appStateSub.remove(); appStateSub = null; }
 }
@@ -195,10 +200,52 @@ export function screen(name) {
   try {
     if (!name || name === 'login' || !userId) return;
     const now = Date.now();
+    currentScreen = name; // taps from here on belong to this screen
     // navigate() can fire twice for one tap; don't count that as two opens.
     if (lastScreen.name === name && now - lastScreen.at < SAME_SCREEN_MS) return;
     lastScreen = { name, at: now };
     push({ type: 'screen', screen: name });
+  } catch (_) { /* ignore */ }
+}
+
+/**
+ * The customer went BACK to a screen. Not an open — returning to a screen isn't
+ * discovering a feature, and counting it would inflate "opened N times" — but it
+ * IS something they did, so it goes on the timeline as a tap and re-points the
+ * screen context so later taps are attributed to where they actually are.
+ */
+export function back(name) {
+  try {
+    if (!name || !userId) return;
+    const from = currentScreen;
+    currentScreen = name;
+    push({ type: 'tap', screen: name, label: from ? `Back from ${from}` : 'Back' });
+  } catch (_) { /* ignore */ }
+}
+
+/** The screen the customer is on, without recording anything. */
+export function setScreen(name) {
+  if (name) currentScreen = name;
+}
+
+/**
+ * A button was pressed. Recorded for EVERY touchable in the app by
+ * services/autotrack, so the Customer Manager sees what the customer actually
+ * did — not only the few things that reach the server.
+ */
+export function tap(label, screenName) {
+  try {
+    if (!userId) return;
+    const text = String(label || '').trim().slice(0, 80);
+    if (!text) return;
+    const where = screenName || currentScreen;
+    const now = Date.now();
+    const key = `${where}|${text}`;
+    // A single press can run more than one handler (a Pressable inside a
+    // TouchableOpacity, or a re-render mid-press); count the press once.
+    if (lastTap.key === key && now - lastTap.at < SAME_TAP_MS) return;
+    lastTap = { key, at: now };
+    push({ type: 'tap', screen: where, label: text });
   } catch (_) { /* ignore */ }
 }
 
@@ -213,4 +260,4 @@ export function action(feature, actionName) {
   } catch (_) { /* ignore */ }
 }
 
-export default { start, stop, flush, screen, action };
+export default { start, stop, flush, screen, back, setScreen, tap, action };
